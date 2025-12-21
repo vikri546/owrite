@@ -51,6 +51,19 @@ class ApiService {
     return _getArticles('/posts', queryParameters);
   }
 
+  Future<List<Article>> getArticlesByTag(int tagId, {int page = 1, int pageSize = 10}) async {
+    final queryParameters = {
+      'tags': tagId.toString(),
+      'page': page.toString(),
+      'per_page': pageSize.toString(),
+      '_embed': '1',
+      'orderby': 'modified',
+      'order': 'desc',
+    };
+
+    return _getArticles('/posts', queryParameters);
+  }
+
   Future<List<Article>> getTopHeadlines({
     int page = 1,
     int pageSize = 100,

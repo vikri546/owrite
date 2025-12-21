@@ -81,6 +81,15 @@ class ArticleRepository {
   }
   // --- AKHIR PERUBAHAN ---
 
+  // Method baru untuk fetch by tag
+  Future<List<Article>> getArticlesByTag(int tagId, {int page = 1, int pageSize = 10}) async {
+    try {
+      return await _apiService.getArticlesByTag(tagId, page: page, pageSize: pageSize);
+    } catch (e) {
+      print('Error fetching articles by tag: $e');
+      return [];
+    }
+  }
 
   // Mencari artikel (langsung panggil ApiService, tanpa cache pencarian saat ini)
   Future<List<Article>> searchArticles({

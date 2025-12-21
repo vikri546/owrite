@@ -65,6 +65,10 @@ class _QuickScreenState extends State<QuickScreen>
   // Local scroll lock, overridable per halaman
   bool? _overrideScrollLock;
 
+  // DEFINISI WARNA TEMA BARU
+  static const Color darkCustomColor = Color(0xFF1A1A1A); // #1a1a1a
+  static const Color lightCustomColor = Color(0xFFF5F5F5); // #f5f5f5
+
   @override
   void initState() {
     super.initState();
@@ -171,7 +175,8 @@ class _QuickScreenState extends State<QuickScreen>
               .where((article) => article.id != widget.initialArticle!.id)
               .toList();
         }
-        newArticles.shuffle();
+        
+        // newArticles.shuffle(); 
 
         if (mounted) {
           setState(() {
@@ -341,8 +346,11 @@ class _QuickScreenState extends State<QuickScreen>
     final articles = _articles;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color backgroundColor = isDark ? Colors.black : Colors.white;
-    final Color cardColor = isDark ? Colors.black : Colors.white;
+    
+    // MENGGUNAKAN WARNA YANG DIMINTA
+    final Color backgroundColor = isDark ? darkCustomColor : lightCustomColor;
+    final Color cardColor = isDark ? darkCustomColor : lightCustomColor;
+    
     final Color textColor = isDark ? Colors.white : Colors.black;
     final Color subtitleColor = isDark ? Colors.white70 : Colors.black87;
     final Color borderColor = isDark ? Colors.white54 : Colors.black12;
@@ -424,7 +432,7 @@ class _QuickScreenState extends State<QuickScreen>
                         .any((a) => a.id == article.id),
                     formatTime: _formatRelativeTime,
                     getSummary: _getSummary,
-                    cardColor: cardColor,
+                    cardColor: cardColor, // Mengirim warna baru ke card
                     textColor: textColor,
                     subtitleColor: subtitleColor,
                     borderColor: borderColor,
@@ -441,6 +449,81 @@ class _QuickScreenState extends State<QuickScreen>
           ),
         ),
       ),
+    );
+  }
+}
+
+// Animasi tiga titik melayang ke atas dan bawah, digunakan sebagai loader
+class _BouncingDots extends StatefulWidget {
+  final Color? color;
+  final double size;
+
+  const _BouncingDots({Key? key, this.color, this.size = 22}) : super(key: key);
+
+  @override
+  State<_BouncingDots> createState() => _BouncingDotsState();
+}
+
+class _BouncingDotsState extends State<_BouncingDots> with TickerProviderStateMixin {
+  late final List<AnimationController> _controllers;
+  late final List<Animation<double>> _animations;
+
+  @override
+  void initState() {
+    super.initState();
+    _controllers = List.generate(3, (i) => AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    ));
+    _animations = List.generate(3, (i) => Tween<double>(begin: 0, end: -10).animate(
+      CurvedAnimation(
+        parent: _controllers[i],
+        curve: Curves.easeInOut,
+      ),
+    ));
+
+    for (int i = 0; i < 3; i++) {
+      Future.delayed(Duration(milliseconds: i * 180), () {
+        if (mounted) _controllers[i].repeat(reverse: true);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.color ?? Theme.of(context).colorScheme.primary;
+    final size = widget.size;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (i) {
+        return AnimatedBuilder(
+          animation: _animations[i],
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(0, _animations[i].value),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: size * 0.12),
+                child: Container(
+                  width: size * 0.28,
+                  height: size * 0.28,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      }),
     );
   }
 }
@@ -500,7 +583,87 @@ class _FullScreenArticleCard extends StatelessWidget {
     final double barHeight = 56;
     final double stickyMinHeight = 20 + 44 + 16 + 38;
 
-    // ---- MODIFIKASI: Implementasi summaryWidget dengan Bullet List Row ---
+    // Warna dasar untuk gradient
+    final Color baseGradientColor = cardColor; 
+
+    // --- Widget Author + Time (Reusable untuk Expanded & Collapsed) ---
+    Widget buildAuthorAndTimeRow() {
+      return Row(
+        children: [
+          // Author Name
+          Flexible(
+            child: RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: "By ",
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: subtitleColor,
+                      fontWeight: FontWeight.normal, // not bold
+                      shadows: isDark
+                          ? [
+                              const Shadow(
+                                color: Colors.black45,
+                                blurRadius: 8,
+                              ),
+                            ]
+                          : null,
+                    ),
+                  ),
+                  TextSpan(
+                    text: "${article.author ?? 'Redaksi'}",
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: subtitleColor,
+                      fontWeight: FontWeight.bold, // bold for author name
+                      shadows: isDark
+                          ? [
+                              const Shadow(
+                                color: Colors.black45,
+                                blurRadius: 8,
+                              ),
+                            ]
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          
+          // Divider Horizontal (Garis vertikal kecil sebagai pembatas)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Container(
+              width: 24,
+              height: 1,
+              color: subtitleColor.withOpacity(0.5),
+            ),
+          ),
+
+          // Publish Time
+          Text(
+            formatTime(article.publishedAt),
+            style: TextStyle(
+              fontSize: 13,
+              color: subtitleColor,
+              shadows: isDark
+                  ? [
+                      const Shadow(
+                        color: Colors.black45,
+                        blurRadius: 8,
+                      ),
+                    ]
+                  : null,
+            ),
+          ),
+        ],
+      );
+    }
+
     Widget summaryWidget(BuildContext context, {TextStyle? style, bool animated = false}) {
       final double fontSizeSummary = 17.5;
       // ignore: unused_local_variable
@@ -510,10 +673,8 @@ class _FullScreenArticleCard extends StatelessWidget {
         height: 1.65,
       );
 
-      // Warna bullet sesuai mode
       final Color bulletColor = isDark ? const Color(0xFFE5FF10) : Colors.black;
 
-      // Fungsi helper untuk membuat baris bullet
       Widget buildBulletRow(String line) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 8.0),
@@ -524,11 +685,11 @@ class _FullScreenArticleCard extends StatelessWidget {
                 "•",
                 style: TextStyle(
                   fontSize: 28,
-                  height: 1.0, // Sedikit penyesuaian agar pas dengan teks
+                  height: 1.0, 
                   color: bulletColor,
                 ),
               ),
-              const SizedBox(width: 8), // Jarak antara bullet dan teks
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   line.trim(),
@@ -545,14 +706,17 @@ class _FullScreenArticleCard extends StatelessWidget {
         future: getSummary(article),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
+            // Ganti "Sedang meringkas..." dengan animasi _BouncingDots
             return Padding(
-              padding: const EdgeInsets.only(left: 8.0),
-              child: Text(
-                "Sedang meringkas...", 
-                style: effectiveStyle.copyWith(
-                  fontStyle: FontStyle.italic, 
-                  color: subtitleColor.withOpacity(0.8)
-                )
+              padding: const EdgeInsets.only(left: 4.0, top: 12.0, bottom: 4.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _BouncingDots(
+                    color: (style?.color ?? subtitleColor.withOpacity(0.8)),
+                    size: 22,
+                  )
+                ],
               ),
             );
           }
@@ -569,11 +733,10 @@ class _FullScreenArticleCard extends StatelessWidget {
           final summaryText = snapshot.data ?? 'Ringkasan tidak tersedia.';
           final rawLines = summaryText.split('\n');
           
-          // Filter baris kosong dan bersihkan bullet markdown bawaan jika ada (agar tidak double)
           final List<String> contentLines = rawLines
               .map((l) => l.trim())
               .where((l) => l.isNotEmpty)
-              .map((l) => l.replaceFirst(RegExp(r'^\s*([•\-\*])\s+'), '')) // Hapus bullet karakter jika sudah ada dari teks
+              .map((l) => l.replaceFirst(RegExp(r'^\s*([•\-\*])\s+'), '')) 
               .toList();
 
           if (contentLines.isEmpty) {
@@ -590,20 +753,18 @@ class _FullScreenArticleCard extends StatelessWidget {
           }
 
           if (animated) {
-            // --- COLLAPSE MODE (animated: true) ---
-            // Tampilkan hanya 3 baris pertama
             final int maxItems = 3;
             final linesToShow = contentLines.take(maxItems).toList();
             final hasMore = contentLines.length > maxItems;
 
             Widget content = Column(
-              crossAxisAlignment: CrossAxisAlignment.start, // Agar bullet sejajar
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 ...linesToShow.map((line) => buildBulletRow(line)),
                 if (hasMore)
                   Padding(
-                    padding: const EdgeInsets.only(left: 14.0, top: 4), // Indentasi sejajar teks
+                    padding: const EdgeInsets.only(left: 14.0, top: 4), 
                     child: Text(
                       '...',
                       style: effectiveStyle.copyWith(
@@ -615,17 +776,17 @@ class _FullScreenArticleCard extends StatelessWidget {
               ],
             );
 
+            // MENGGUNAKAN WARNA BARU UNTUK FADE OUT
             return _FadeOutMask(
               isDark: isDark,
               child: content,
               maskHeight: 40,
+              baseColor: baseGradientColor, // Kirim warna background custom
             );
 
           } else {
-            // --- EXPAND MODE (animated: false) ---
-            // Tampilkan semua baris
             return Column(
-              crossAxisAlignment: CrossAxisAlignment.start, // Agar bullet sejajar
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: contentLines.map((line) => buildBulletRow(line)).toList(),
             );
@@ -633,7 +794,6 @@ class _FullScreenArticleCard extends StatelessWidget {
         },
       );
     }
-    // ---- AKHIR MODIFIKASI summaryWidget ----
 
     if (isExpanded) {
       return Container(
@@ -701,8 +861,8 @@ class _FullScreenArticleCard extends StatelessWidget {
                                   Text(
                                     article.title,
                                     style: TextStyle(
-                                      fontFamily: 'Domine',
-                                      fontSize: 24,
+                                      fontFamily: 'CrimsonPro',
+                                      fontSize: 32,
                                       fontWeight: FontWeight.bold,
                                       color: textColor,
                                       height: 1.3,
@@ -727,21 +887,8 @@ class _FullScreenArticleCard extends StatelessWidget {
                                     overflow: TextOverflow.visible,
                                   ),
                                   const SizedBox(height: 8),
-                                  Text(
-                                    formatTime(article.publishedAt),
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: subtitleColor,
-                                      shadows: isDark
-                                          ? [
-                                              const Shadow(
-                                                color: Colors.black45,
-                                                blurRadius: 8,
-                                              ),
-                                            ]
-                                          : null,
-                                    ),
-                                  ),
+                                  // --- MODIFIED: Added Author + Divider ---
+                                  buildAuthorAndTimeRow(),
                                   const SizedBox(height: 16),
                                   summaryWidget( 
                                     context,
@@ -882,23 +1029,16 @@ class _FullScreenArticleCard extends StatelessWidget {
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: isDark
-                              ? [
-                                  Colors.transparent,
-                                  Colors.black.withOpacity(0.10),
-                                  Colors.black.withOpacity(0.25),
-                                  Colors.black.withOpacity(0.42),
-                                  Colors.black.withOpacity(0.60),
-                                  Colors.black,
-                                ]
-                              : [
-                                  Colors.transparent,
-                                  Colors.white.withOpacity(0.11),
-                                  Colors.white.withOpacity(0.29),
-                                  Colors.white.withOpacity(0.53),
-                                  Colors.white.withOpacity(0.70),
-                                  Colors.white,
-                                ],
+                          // GRADIENT OVERLAY GAMBAR - Bagian Bawah
+                          // Harus menyatu ke background baru (baseGradientColor)
+                          colors: [
+                            Colors.transparent,
+                            baseGradientColor.withOpacity(0.10),
+                            baseGradientColor.withOpacity(0.25),
+                            baseGradientColor.withOpacity(0.42),
+                            baseGradientColor.withOpacity(0.60),
+                            baseGradientColor,
+                          ],
                           stops: const [0.00, 0.28, 0.44, 0.68, 0.89, 1.00],
                         ),
                       ),
@@ -918,18 +1058,19 @@ class _FullScreenArticleCard extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
+                // GRADIENT TRANSISI GAMBAR KE BACKGROUND
                 colors: isDark
                     ? [
                         Colors.transparent,
                         Colors.transparent,
-                        Colors.black87,
-                        Colors.black,
+                        baseGradientColor.withOpacity(0.87), // Menggunakan base color
+                        baseGradientColor,
                       ]
                     : [
                         Colors.transparent,
                         Colors.transparent,
-                        Colors.white70,
-                        Colors.white,
+                        baseGradientColor.withOpacity(0.70), // Menggunakan base color
+                        baseGradientColor,
                       ],
                 stops: const [0.0, 0.4, 0.76, 1.0],
               ),
@@ -981,16 +1122,18 @@ class _FullScreenArticleCard extends StatelessWidget {
                             gradient: LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
+                              // GRADIENT KECIL DI ATAS CARD (Bayangan tipis)
+                              // Ini opsional, tapi lebih baik pakai base color yang sangat transparan
                               colors: isDark
                                   ? [
                                       Colors.transparent,
-                                      Colors.black.withOpacity(0.18),
+                                      Colors.black.withOpacity(0.18), // Shadow hitam oke utk dark
                                       Colors.black.withOpacity(0.28),
                                       Colors.black.withOpacity(0.41),
                                     ]
                                   : [
                                       Colors.transparent,
-                                      Colors.white.withOpacity(0.15),
+                                      Colors.white.withOpacity(0.15), // Shadow putih oke utk light
                                       Colors.white.withOpacity(0.30),
                                       Colors.white.withOpacity(0.53),
                                     ],
@@ -1003,10 +1146,10 @@ class _FullScreenArticleCard extends StatelessWidget {
                     Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: cardColor,
+                        color: cardColor, // MENGGUNAKAN WARNA BARU
                         borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(22),
-                          topRight: Radius.circular(22),
+                          topLeft: Radius.circular(0),
+                          topRight: Radius.circular(0),
                         ),
                         boxShadow: [
                           BoxShadow(
@@ -1026,7 +1169,6 @@ class _FullScreenArticleCard extends StatelessWidget {
                                   bottom: stickyMinHeight + media.padding.bottom,
                                 ),
                                 child: SingleChildScrollView(
-                                  // Perubahan di sini: Mematikan scroll internal saat belum di-expand
                                   physics: const NeverScrollableScrollPhysics(), 
                                   padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
                                   child: ConstrainedBox(
@@ -1051,7 +1193,7 @@ class _FullScreenArticleCard extends StatelessWidget {
                                         Text(
                                           article.title,
                                           style: TextStyle(
-                                            fontFamily: 'Domine',
+                                            fontFamily: 'CrimsonPro',
                                             fontSize: 24,
                                             fontWeight: FontWeight.bold,
                                             color: textColor,
@@ -1077,21 +1219,8 @@ class _FullScreenArticleCard extends StatelessWidget {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                         const SizedBox(height: 8),
-                                        Text(
-                                          formatTime(article.publishedAt),
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: subtitleColor,
-                                            shadows: isDark
-                                                ? [
-                                                    const Shadow(
-                                                      color: Colors.black45,
-                                                      blurRadius: 8,
-                                                    ),
-                                                  ]
-                                                : null,
-                                          ),
-                                        ),
+                                        // --- MODIFIED: Added Author + Divider ---
+                                        buildAuthorAndTimeRow(),
                                         const SizedBox(height: 16),
                                         summaryWidget( 
                                           context,
@@ -1201,12 +1330,14 @@ class _FadeOutMask extends StatelessWidget {
   final Widget child;
   final bool isDark;
   final double maskHeight;
+  final Color baseColor; // Menambahkan parameter baseColor
 
   const _FadeOutMask({
     Key? key,
     required this.child,
     required this.isDark,
     this.maskHeight = 32,
+    required this.baseColor, // Required agar sesuai background
   }) : super(key: key);
 
   @override
@@ -1225,20 +1356,16 @@ class _FadeOutMask extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: isDark
-                      ? [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.23),
-                          Colors.black.withOpacity(0.34),
-                          Colors.black.withOpacity(0.77),
-                        ]
-                      : [
-                          Colors.transparent,
-                          Colors.white.withOpacity(0.17),
-                          Colors.white.withOpacity(0.22),
-                          Colors.white.withOpacity(0.84),
-                        ],
-                  stops: const [0.01, 0.31, 0.65, 1.0],
+                  // GRADIENT FADE OUT TEXT
+                  // Menggunakan baseColor (background) agar menyatu sempurna
+                  colors: [
+                    Colors.transparent,
+                    baseColor.withOpacity(0.23),
+                    baseColor.withOpacity(0.50),
+                    baseColor.withOpacity(0.90),
+                    baseColor,
+                  ],
+                  stops: const [0.0, 0.3, 0.5, 0.8, 1.0],
                 ),
               ),
             ),

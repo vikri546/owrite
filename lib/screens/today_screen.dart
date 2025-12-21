@@ -1,4 +1,3 @@
-// 💡 --- FILE BARU: today_screen.dart ---
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -11,7 +10,9 @@ import '../providers/theme_provider.dart';
 import '../widgets/article_card.dart';
 import 'article_detail_screen.dart';
 import '../utils/custom_page_transitions.dart';
-import 'notifications_screen.dart'; // ADD THIS IMPORT
+import 'notifications_screen.dart';
+// 💡 Tambahkan Import Repository
+import '../repositories/article_repository.dart';
 
 class TodayScreen extends StatefulWidget {
   final List<Article> bookmarkedArticles;
@@ -29,6 +30,9 @@ class TodayScreen extends StatefulWidget {
 
 class _TodayScreenState extends State<TodayScreen> with TickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
+  
+  // 💡 Inisialisasi Repository untuk mengambil data fresh
+  final ArticleRepository _articleRepository = ArticleRepository();
 
   late AnimationController _headerAnimController;
   late Animation<double> _headerHeightAnimation;
@@ -63,7 +67,7 @@ class _TodayScreenState extends State<TodayScreen> with TickerProviderStateMixin
     _scrollController.addListener(_onScroll);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadDataFromProvider();
+      _loadData24Hours(); // 💡 Panggil fungsi baru
     });
   }
 
@@ -85,30 +89,50 @@ class _TodayScreenState extends State<TodayScreen> with TickerProviderStateMixin
     super.dispose();
   }
 
-  Future<void> _loadDataFromProvider() async {
+  // 💡 LOGIKA BARU: Mengambil semua data 'Top News' (Agregat semua kategori)
+  // dengan limit besar (100) lalu difilter manual 24 jam.
+  Future<void> _loadData24Hours() async {
     if (!mounted) return;
     setState(() {
       _isInitialLoading = true;
     });
 
-    final articleProvider = Provider.of<ArticleProvider>(context, listen: false);
-    final allArticles = articleProvider.articles;
+    try {
+      // 1. Ambil data dari Repository langsung (bukan provider yang mungkin terbatas/kategori lain)
+      // Gunakan pageSize besar (misal 100) untuk memastikan kita mendapat semua berita hari ini
+      final allFetchArticles = await _articleRepository.getArticlesByCategory(
+        'Top News', 
+        page: 1, 
+        pageSize: 100 
+      );
 
-    final now = DateTime.now();
-    final twentyFourHoursAgo = now.subtract(const Duration(hours: 24));
+      // 2. Tentukan batas waktu 24 jam yang lalu
+      final now = DateTime.now();
+      final twentyFourHoursAgo = now.subtract(const Duration(hours: 24));
 
-    final filteredArticles = allArticles.where((article) {
-      return article.publishedAt.isAfter(twentyFourHoursAgo);
-    }).toList();
+      // 3. Filter artikel yang benar-benar dalam 24 jam terakhir
+      final filteredArticles = allFetchArticles.where((article) {
+        return article.publishedAt.isAfter(twentyFourHoursAgo);
+      }).toList();
 
-    filteredArticles.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
+      // 4. Urutkan dari yang paling baru
+      filteredArticles.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
 
-    if (mounted) {
-      setState(() {
-        _todayArticles = filteredArticles;
-        _isInitialLoading = false;
-        _bookmarkedArticleIds = widget.bookmarkedArticles.map((a) => a.id).toSet();
-      });
+      if (mounted) {
+        setState(() {
+          _todayArticles = filteredArticles;
+          _isInitialLoading = false;
+          _bookmarkedArticleIds = widget.bookmarkedArticles.map((a) => a.id).toSet();
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading today articles: $e");
+      if (mounted) {
+        setState(() {
+          _isInitialLoading = false;
+          _todayArticles = []; // Kosongkan jika error
+        });
+      }
     }
   }
 
@@ -137,7 +161,7 @@ class _TodayScreenState extends State<TodayScreen> with TickerProviderStateMixin
         !_isDoingRefreshOnScrollTop) {
       _isDoingRefreshOnScrollTop = true;
       // Jalankan refresh seperti pull-to-refresh
-      _loadDataFromProvider().whenComplete(() {
+      _loadData24Hours().whenComplete(() {
         // Berikan delay sedikit agar tidak trigger terus-menerus jika user diam di atas
         Future.delayed(const Duration(milliseconds: 500), () {
           _isDoingRefreshOnScrollTop = false;
@@ -238,7 +262,6 @@ class _TodayScreenState extends State<TodayScreen> with TickerProviderStateMixin
                   height: 20,
                 ),
                 onPressed: () {
-                  // debugPrint("Tombol Notifikasi ditekan");
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => NotificationsScreen(),
@@ -247,21 +270,6 @@ class _TodayScreenState extends State<TodayScreen> with TickerProviderStateMixin
                 },
                 tooltip: 'Notifikasi',
               ),
-              // IconButton(
-              //   icon: SvgPicture.string(
-              //     '''
-              //     <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 416 432">
-              //       <path fill="${isDark ? '#FFFFFF' : '#000000'}" d="m366 237l45 35q7 6 3 14l-43 74q-4 8-13 4l-53-21q-18 13-36 21l-8 56q-1 9-11 9h-85q-9 0-11-9l-8-56q-19-8-36-21l-53 21q-9 3-13-4L1 286q-4-8 3-14l45-35q-1-12-1-21t1-21L4 160q-7-6-3-14l43-74q5-8 13-4l53 21q18-13 36-21l8-56q2-9 11-9h85q10 0 11 9l8 56q19 8 36 21l53-21q9-3 13 4l43 74q4 8-3 14l-45 35q2 12 2 21t-2 21zm-158.5 54q30.5 0 52.5-22t22-53t-22-53t-52.5-22t-52.5 22t-22 53t22 53t52.5 22z"/>
-              //     </svg>
-              //     ''',
-              //     width: 20,
-              //     height: 20,
-              //   ),
-              //   onPressed: () {
-              //     debugPrint("Tombol Pengaturan ditekan");
-              //   },
-              //   tooltip: 'Pengaturan',
-              // ),
             ],
           ),
         ),
@@ -269,11 +277,7 @@ class _TodayScreenState extends State<TodayScreen> with TickerProviderStateMixin
     );
   }
 
-  /// Sectioned block builder, NOT repeat:
-  /// - layout5 (1x, fullwidth)
-  /// - layout1 (2x, column)
-  /// - layout5 (4x, 2 row of 2 columns)
-  /// - layout1 for all remaining
+  /// Sectioned block builder (Dynamic Length)
   Widget _buildContent(bool isDark) {
     if (_isInitialLoading) {
       return Expanded(
@@ -301,12 +305,12 @@ class _TodayScreenState extends State<TodayScreen> with TickerProviderStateMixin
 
     int idx = 0;
 
-    // 1. layout5 (fullwidth, idx 0)
+    // 1. layout5 (1x, fullwidth)
     if (idx < l) {
       final a = _todayArticles[idx];
       blocks.add(
         Padding(
-          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 20.0), // kiri, atas, kanan, bawah
+          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 20.0), 
           child: ArticleCard(
             article: a,
             isBookmarked: _bookmarkedArticleIds.contains(a.id),
@@ -319,9 +323,10 @@ class _TodayScreenState extends State<TodayScreen> with TickerProviderStateMixin
       idx++;
     }
 
-    // 2. layout1 (2x, vertical, idx 1,2)
+    // 2. layout1 (2x, vertical)
     if (idx < l) {
       final colChildren = <Widget>[];
+      // Item 1
       if (idx < l) {
         colChildren.add(Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -335,6 +340,7 @@ class _TodayScreenState extends State<TodayScreen> with TickerProviderStateMixin
         ));
         idx++;
       }
+      // Item 2
       if (idx < l) {
         colChildren.add(ArticleCard(
           article: _todayArticles[idx],
@@ -351,14 +357,17 @@ class _TodayScreenState extends State<TodayScreen> with TickerProviderStateMixin
       ));
     }
 
-    // 3. layout5 (4x: two rows, two column each, idx 3,4,5,6)
+    // 3. layout5 (4x: two rows, two column each)
+    // 💡 Loop ini akan berjalan selama masih ada data untuk mengisi pola Grid Layout 5
+    // tapi kita batasi 2 baris (4 item) sesuai request awal, atau bisa diloop terus jika mau.
+    // Sesuai kode sebelumnya: 2 baris (idx 3,4,5,6)
     for (int row = 0; row < 2; row++) {
       if (idx < l) {
         final leftIdx = idx;
         final rightIdx = idx + 1;
         blocks.add(
           Padding(
-            padding: const EdgeInsets.fromLTRB(16.0, 2.0, 16.0, 20.0), // kiri, atas, kanan, bawah
+            padding: const EdgeInsets.fromLTRB(16.0, 2.0, 16.0, 20.0),
             child: Row(
               children: [
                 if (leftIdx < l && rightIdx < l)
@@ -406,7 +415,8 @@ class _TodayScreenState extends State<TodayScreen> with TickerProviderStateMixin
       }
     }
 
-    // 4. Sisanya layout1 (vertical)
+    // 4. Sisanya layout1 (vertical) sampai habis
+    // 💡 Bagian ini menjamin "Tampilkan semua berita" (tidak ada limit 10)
     while (idx < l) {
       blocks.add(
         Padding(
@@ -430,7 +440,7 @@ class _TodayScreenState extends State<TodayScreen> with TickerProviderStateMixin
 
     return Expanded(
       child: RefreshIndicator(
-        onRefresh: _loadDataFromProvider,
+        onRefresh: _loadData24Hours, // Gunakan fungsi load baru
         color: _loadMoreColor,
         backgroundColor: isDark ? ThemeProvider.darkColor : ThemeProvider.lightColor,
         child: ListView(

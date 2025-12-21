@@ -237,3 +237,7 @@ flutter:
           weight: 500
         - asset: assets/fonts/Bricolage_Grotesque/static/BricolageGrotesque_24pt-Bold.ttf
           weight: 700
+    - family: Anton
+      fonts:
+        - asset: assets/fonts/Anton/Anton-Regular.ttf
+          weight: 400

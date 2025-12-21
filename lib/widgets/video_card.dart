@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Untuk Clipboard
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../models/video.dart';
-
-// --- PENANDA: ADA 3 LAYOUT UTAMA DI SINI ---
-// 1. VideoCardLayout.full (layout default/kolom)
-// 2. VideoCardLayout.horizontal (layout baris horizontal)
-// 3. VideoCardLayout.shorts (tampilan shorts youtube)
+// Import watch_screen untuk akses WishlistManager jika perlu hapus direct
+import '../screens/watch_screen.dart'; 
 
 enum VideoCardLayout { full, horizontal, shorts }
 
@@ -14,48 +13,130 @@ class VideoCard extends StatelessWidget {
   final Video video;
   final VoidCallback onTap;
   final VideoCardLayout layout;
+  // Callback opsional untuk tombol simpan
+  final VoidCallback? onAddToWishlist;
+  final bool isWishlistMode;
 
   const VideoCard({
     Key? key,
     required this.video,
     required this.onTap,
     this.layout = VideoCardLayout.full,
+    this.onAddToWishlist,
+    this.isWishlistMode = false,
   }) : super(key: key);
 
-  /// Implementasi agar tidak error jika Video tidak punya getter isShorts.
-  /// Gunakan heuristik (judul mengandung "shorts" ATAU durasi <= 5 menit - sama dengan watch_screen.dart)
-  bool get _isShorts {
-    return video.title.toLowerCase().contains('shorts') || _durationIsShort();
-  }
-
-  /// Cek apakah durasi video <= 5 menit
-  bool _durationIsShort() {
-    List<String> parts = video.duration.split(':');
-    if (parts.length == 2) {
-      int minutes = int.tryParse(parts[0]) ?? 0;
-      int seconds = int.tryParse(parts[1]) ?? 0;
-      int totalSeconds = minutes * 60 + seconds;
-      return totalSeconds <= 300; // 5 menit = 300 detik
-    } else if (parts.length == 3) {
-      int hours = int.tryParse(parts[0]) ?? 0;
-      int minutes = int.tryParse(parts[1]) ?? 0;
-      int seconds = int.tryParse(parts[2]) ?? 0;
-      int totalSeconds = hours * 3600 + minutes * 60 + seconds;
-      return totalSeconds <= 300;
-    }
-    return false;
+  void _shareVideo(BuildContext context) {
+    // Copy link ke clipboard
+    final url = 'https://www.youtube.com/watch?v=${video.id}';
+    Clipboard.setData(ClipboardData(text: url));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Link YouTube disalin!')),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const accentColor = Color(0xFFE5FF10);
-    final cardColor = isDark ? const Color(0xFF111111) : Colors.white;
     final subtleBorderColor = isDark ? Colors.white10 : Colors.black12;
+    final cardColor = isDark ? const Color(0xFF111111) : Colors.white;
 
     switch (layout) {
+      case VideoCardLayout.shorts:
+        // --- LAYOUT SHORTS (TIDAK BERUBAH) ---
+        return GestureDetector(
+          onTap: onTap,
+          child: AspectRatio(
+            aspectRatio: 9 / 16,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: CachedNetworkImage(
+                    imageUrl: video.thumbnailUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      color: isDark ? Colors.grey[850] : Colors.grey[300],
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: isDark ? Colors.grey[850] : Colors.grey[300],
+                      child: Icon(
+                        Icons.broken_image,
+                        color: isDark ? Colors.grey[600] : Colors.grey[400],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.8),
+                        ],
+                        stops: const [0.0, 0.6, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 10,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      video.duration,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 12,
+                  left: 10,
+                  right: 10,
+                  child: Text(
+                    video.title.trim(),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Arimo',
+                      color: Colors.white,
+                      fontSize: 13, 
+                      fontWeight: FontWeight.bold,
+                      height: 1.2,
+                      shadows: [
+                        Shadow(
+                          offset: Offset(0, 1),
+                          blurRadius: 3.0,
+                          color: Colors.black54,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
       case VideoCardLayout.horizontal:
-        // --- MULAI: LAYOUT HORIZONTAL ---
+        // --- LAYOUT HORIZONTAL (TIDAK BERUBAH) ---
         return Material(
           color: Colors.transparent,
           child: InkWell(
@@ -82,18 +163,16 @@ class VideoCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Thumbnail on the left
-                      _buildThumbnail(isDark, horizontal: true),
+                      _buildThumbnail(isDark, video, horizontal: true),
                       const SizedBox(width: 12),
-                      // Title dan metadata di sebelah kanan (tanpa channel)
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Flexible(child: _buildTitle(isDark)),
+                            Flexible(child: _buildTitle(isDark, video)),
                             const SizedBox(height: 8),
-                            _buildHorizontalMetadata(isDark, accentColor: accentColor),
+                            _buildHorizontalMetadata(isDark, video, accentColor: accentColor),
                           ],
                         ),
                       ),
@@ -104,263 +183,319 @@ class VideoCard extends StatelessWidget {
             ),
           ),
         );
-        // --- AKHIR: LAYOUT HORIZONTAL ---
-
-      case VideoCardLayout.shorts:
-        // --- MULAI: LAYOUT SHORTS (dengan judul di atas dan published time di bawah) ---
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(10),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  color: cardColor,
-                  border: Border.all(
-                    color: subtleBorderColor,
-                    width: 0.8,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.45 : 0.09),
-                      blurRadius: 18,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildThumbnail(isDark, shorts: true),
-                        const SizedBox(height: 8),
-                        // Judul di atas, publishedAt di bawahnya (centered)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 3),
-                          child: _buildTitle(
-                            isDark,
-                            maxLines: 2,
-                            centered: true,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        // Published time di bawah judul (centered)
-                        _buildShortsPublishedAt(isDark, centered: true),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-        // --- AKHIR: LAYOUT SHORTS ---
 
       case VideoCardLayout.full:
       default:
-        // --- MULAI: LAYOUT FULL (DEFAULT/KARTU VERTIKAL) ---
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(5),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(5),
-                  border: Border.all(color: subtleBorderColor, width: 0.8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.5 : 0.08),
-                      blurRadius: 22,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 10, 10, 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
+        // --- LAYOUT FULL (DITAMBAHKAN ACTION BUTTON) ---
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(0),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. Thumbnail Image
+                  Stack(
                     children: [
-                      _buildThumbnail(isDark),
-                      const SizedBox(height: 12),
-                      _buildTitle(isDark),
-                      const SizedBox(height: 8),
-                      _buildMetadata(isDark, accentColor: accentColor),
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(0)),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: CachedNetworkImage(
+                            imageUrl: video.thumbnailUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: isDark ? const Color(0xFF2A2A2A) : Colors.grey[200],
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFE5FF10)),
+                                ),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              color: isDark ? const Color(0xFF2A2A2A) : Colors.grey[200],
+                              child: Icon(Icons.broken_image, 
+                                 color: isDark ? Colors.grey[700] : Colors.grey[400]),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Durasi Badge
+                      Positioned(
+                        bottom: 10,
+                        right: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.play_arrow, size: 10, color: accentColor),
+                              const SizedBox(width: 4),
+                              Text(
+                                video.duration,
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                ),
+
+                  // 2. Konten Teks & Action Button
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 8, 16), // Right padding dikurangi sedikit
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // KONTEN TEKS (JUDUL + INFO)
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                video.title.trim(),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontFamily: 'Arimo',
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.3,
+                                  color: isDark ? Colors.white.withOpacity(0.95) : Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                          color: isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'VIDEO',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w900,
+                                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _formatRelativeTime(video.publishedAt),
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 12,
+                                      color: isDark ? Colors.grey[500] : Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // ACTION BUTTON (TITIK 3)
+                        PopupMenuButton<String>(
+                          icon: Padding(
+                            padding: const EdgeInsets.only(bottom: 12, left: 12),
+                            child: SvgPicture.string(
+                              '''
+                              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                                <path fill="${(isDark ? '#ffffff' : '#000000')}" d="M10 10h4v4h-4zm0-6h4v4h-4zm0 12h4v4h-4z"/>
+                              </svg>
+                              ''',
+                              width: 24,
+                              height: 24,
+                            ),
+                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          color: isDark ? const Color(0xFF2A2A2A) : Colors.white,
+                          onSelected: (value) {
+                            if (value == 'wishlist') {
+                              if (isWishlistMode) {
+                                // Jika di halaman wishlist, logic hapus
+                                WishlistManager.removeFromWishlist(video.id);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Dihapus dari wishlist')),
+                                );
+                              } else {
+                                // Jika di home, simpan
+                                if (onAddToWishlist != null) onAddToWishlist!();
+                              }
+                            } else if (value == 'share') {
+                              _shareVideo(context);
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'wishlist',
+                              child: Row(
+                                children: [
+                                  if (isWishlistMode) ...[
+                                    Icon(
+                                      Icons.delete_outline,
+                                      size: 20,
+                                      color: Colors.red,
+                                    ),
+                                  ] else ...[
+                                    // Tampilkan ikon sesuai status: sudah/memang simpan
+                                    ValueListenableBuilder<List<Video>>(
+                                      valueListenable: WishlistManager.wishlist,
+                                      builder: (context, wishlist, _) {
+                                        final isBookmarked = wishlist.any((v) => v.id == video.id);
+                                        return Icon(
+                                          isBookmarked ? Icons.bookmark : Icons.bookmark_add_outlined,
+                                          // Filled jika sudah di bookmark, outlined jika belum
+                                          size: 20,
+                                          color: isBookmarked
+                                              ? Color(0xFFE5FF10)
+                                              : (isDark ? Colors.white : Colors.black),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                  const SizedBox(width: 12),
+                                  ValueListenableBuilder<List<Video>>(
+                                    valueListenable: WishlistManager.wishlist,
+                                    builder: (context, wishlist, _) {
+                                      final isBookmarked = wishlist.any((v) => v.id == video.id);
+                                      return Text(
+                                        isWishlistMode
+                                            ? 'Hapus'
+                                            : (isBookmarked ? 'Disimpan' : 'Simpan'),
+                                        style: TextStyle(
+                                          color: isWishlistMode
+                                              ? Colors.red
+                                              : (isBookmarked
+                                                  ? Color(0xFFE5FF10)
+                                                  : (isDark ? Colors.white : Colors.black)),
+                                          // fontWeight: isBookmarked ? FontWeight.bold : FontWeight.normal,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'share',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.share_outlined, size: 20, color: isDark ? Colors.white : Colors.black),
+                                  const SizedBox(width: 12),
+                                  Text('Bagikan', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         );
-        // --- AKHIR: LAYOUT FULL ---
     }
   }
 
-  /// Revisi untuk thumbnail: tambahkan layout shorts
-  Widget _buildThumbnail(
-    bool isDark, {
-    bool horizontal = false,
-    bool shorts = false,
-  }) {
-    // Atur aspek rasio khusus shorts (9:16)
-    final double aspect = shorts
-        ? 9 / 16
-        : horizontal
-            ? 16 / 10
-            : 16 / 9;
+  // --- Helper Widgets ---
 
-    final double? width = shorts
-        ? 108 // Lebih sempit dan tinggi dari default
-        : horizontal
-            ? 146
-            : null;
-    final double? height = shorts
-        ? 192
-        : horizontal
-            ? 88
-            : null;
+  Widget _buildThumbnail(bool isDark, Video video, {bool horizontal = false}) {
+    final double aspect = horizontal ? 16 / 10 : 16 / 9;
+    final double? height = horizontal ? 88 : null;
+    final double? width = horizontal ? 146 : null;
 
-    final widget = ClipRRect(
-      borderRadius: BorderRadius.circular(5.0),
-      child: AspectRatio(
-        aspectRatio: aspect,
-        child: CachedNetworkImage(
-          imageUrl: video.thumbnailUrl,
-          fit: BoxFit.cover,
-          placeholder: (context, url) => Container(
-            color: isDark ? Colors.grey[800] : Colors.grey[300],
-            child: const Center(
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
-          errorWidget: (context, url, error) => Container(
-            color: isDark ? Colors.grey[800] : Colors.grey[300],
-            child: Icon(
-              Icons.play_circle_outline,
-              color: isDark ? Colors.grey[600] : Colors.grey[400],
-              size: 48,
-            ),
+    return SizedBox(
+      height: height,
+      width: width,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(5.0),
+        child: AspectRatio(
+          aspectRatio: aspect,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: CachedNetworkImage(
+                  imageUrl: video.thumbnailUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    color: isDark ? Colors.grey[800] : Colors.grey[300],
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFE5FF10)),
+                      ),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: isDark ? Colors.grey[800] : Colors.grey[300],
+                    child: Icon(
+                      Icons.play_circle_outline,
+                      color: isDark ? Colors.grey[600] : Colors.grey[400],
+                      size: 48,
+                    ),
+                  ),
+                ),
+              ),
+              if (!horizontal)
+                Positioned(
+                  right: 8,
+                  bottom: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.73),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text(
+                      video.duration,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        color: Colors.white,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
     );
-
-    final List<Widget> children = [widget];
-
-    // Tambahkan badge "Shorts" di pojok untuk shorts video
-    if (shorts || _isShorts) {
-      children.add(
-        Positioned(
-          left: 8,
-          top: 8,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: Colors.redAccent.withOpacity(0.92),
-              borderRadius: BorderRadius.circular(5),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.play_arrow, size: 15, color: Colors.white),
-                SizedBox(width: 2),
-                Text(
-                  'SHORTS',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontSize: 11.5,
-                    letterSpacing: 0.7,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Overlay durasi pada thumbnail -- durasi tetap di kanan bawah, size disesuaikan untuk shorts
-    if (!(shorts || _isShorts)) {
-      children.add(
-        Positioned(
-          right: 8,
-          bottom: 8,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              video.duration,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-      );
-    } else {
-      children.add(
-        Positioned(
-          right: 8,
-          bottom: 8,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.73),
-              borderRadius: BorderRadius.circular(3),
-            ),
-            child: Text(
-              video.duration,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                color: Colors.white,
-                fontSize: 10.5,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    final result = Stack(children: children);
-
-    if (shorts) {
-      return SizedBox(
-        width: width,
-        height: height,
-        child: result,
-      );
-    } else if (horizontal) {
-      return SizedBox(
-        height: 88,
-        width: 146,
-        child: result,
-      );
-    } else {
-      return result;
-    }
   }
 
-  Widget _buildTitle(bool isDark, {int maxLines = 2, bool centered = false}) {
+  Widget _buildTitle(bool isDark, Video video) {
     return Text(
       video.title.trim(),
       style: TextStyle(
@@ -371,59 +506,12 @@ class VideoCard extends StatelessWidget {
         height: 1.3,
         letterSpacing: 0.2,
       ),
-      maxLines: maxLines,
-      textAlign: centered ? TextAlign.center : TextAlign.start,
+      maxLines: 2,
       overflow: TextOverflow.ellipsis,
     );
   }
 
-  Widget _buildChannelName(bool isDark, {bool centered = false}) {
-    return Text(
-      video.channelTitle,
-      style: TextStyle(
-        fontFamily: 'Inter',
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
-        color: isDark ? Colors.grey[400] : Colors.grey[700],
-      ),
-      maxLines: 1,
-      textAlign: centered ? TextAlign.center : TextAlign.start,
-      overflow: TextOverflow.ellipsis,
-    );
-  }
-
-  Widget _buildMetadata(bool isDark, {Color accentColor = const Color(0xFFE5FF10)}) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
-        Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: accentColor,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Flexible(
-          child: Text(
-            _formatRelativeTime(video.publishedAt),
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 11,
-              color: isDark ? Colors.grey[500] : Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHorizontalMetadata(bool isDark, {Color accentColor = const Color(0xFFE5FF10)}) {
+  Widget _buildHorizontalMetadata(bool isDark, Video video, {Color accentColor = const Color(0xFFE5FF10)}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -444,41 +532,6 @@ class VideoCard extends StatelessWidget {
             ),
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Metadata bawah untuk shorts (kosong/dummy, atau bisa untuk views/dll)
-  Widget _buildShortsMetadataBelow(bool isDark) {
-    return SizedBox.shrink();
-  }
-
-  /// Widget untuk waktu publish pada shorts
-  Widget _buildShortsPublishedAt(bool isDark, {Color accentColor = const Color(0xFFE5FF10), bool centered = false}) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: centered ? MainAxisAlignment.center : MainAxisAlignment.start,
-      children: [
-        Icon(
-          Icons.access_time,
-          size: 12,
-          color: isDark ? Colors.grey[500] : Colors.grey[600],
-        ),
-        const SizedBox(width: 4),
-        Flexible(
-          child: Text(
-            _formatRelativeTime(video.publishedAt),
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 11,
-              color: isDark ? Colors.grey[500] : Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-            textAlign: centered ? TextAlign.center : TextAlign.start,
           ),
         ),
       ],

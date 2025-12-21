@@ -18,7 +18,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/bookmark_screen.dart';
-import 'screens/about_screen.dart';
+import 'screens/link_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/users_screen.dart';
 import 'screens/quick_screen.dart';
@@ -27,6 +27,9 @@ import 'screens/notifications_screen.dart'; // Impor file yang sudah dimodifikas
 import 'screens/display_settings_screen.dart';
 import 'screens/web_login_screen.dart';
 import 'screens/watch_screen.dart';
+import 'screens/article_detail_screen.dart';
+import 'screens/youtube_player_screen.dart';
+import 'screens/shorts_player_screen.dart';
 
 // Models & Utils
 import 'models/article.dart';
@@ -35,6 +38,7 @@ import 'utils/theme_config.dart';
 import 'utils/auth_service.dart';
 import 'utils/font_cache.dart';
 import 'utils/strings.dart';
+import 'repositories/article_repository.dart';
 
 // Providers
 import 'providers/theme_provider.dart';
@@ -46,14 +50,134 @@ import 'providers/video_provider.dart';
 import 'services/notification_service.dart';
 import 'services/background_notification_service.dart';
 import 'services/bookmark_service.dart';
+import 'services/notification_manager.dart';
 
 // Widgets
 import 'widgets/theme_transition_builder.dart';
 import 'widgets/theme_toggle_button.dart';
 
 // Warna background bottom bar untuk terang dan gelap
-const Color kBottomNavLightColor = Color(0xFFFFFFFF); // terang
-const Color kBottomNavDarkColor = Color(0xFF222222); // gelap
+const Color kBottomNavLightColor = Color(0xFFF5F5F5);
+const Color kBottomNavDarkColor = Color(0xFF1A1A1A);
+
+// Global navigator key untuk navigasi dari notifikasi
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+
+/// Handle notification tap dan navigasi
+void _handleNotificationTap(String? payload) {
+  if (payload == null || payload.isEmpty) return;
+  
+  try {
+    final data = json.decode(payload) as Map<String, dynamic>;
+    final type = data['type'] as String?;
+    
+    if (type == 'article') {
+      final articleId = data['id'] as String?;
+      final articleUrl = data['url'] as String?;
+      
+      if (articleId != null || articleUrl != null) {
+        _navigateToArticle(articleId, articleUrl);
+      }
+    } else if (type == 'video') {
+      final videoId = data['id'] as String?;
+      final isShorts = data['isShorts'] as bool? ?? false;
+      
+      if (videoId != null) {
+        _navigateToVideo(videoId, isShorts);
+      }
+    } else if (type == 'articles_24h') {
+      // Navigate to home screen
+      navigatorKey.currentState?.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainScreen(initialTab: 0)),
+        (route) => false,
+      );
+    }
+  } catch (e) {
+    debugPrint('Error handling notification tap: $e');
+  }
+}
+
+/// Navigate to article detail
+Future<void> _navigateToArticle(String? articleId, String? articleUrl) async {
+  try {
+    if (articleId == null && articleUrl == null) return;
+    
+    // Fetch article by ID or URL
+    final articleRepository = ArticleRepository();
+    Article? article;
+    
+    if (articleId != null) {
+      // Try to get article by ID from all articles
+      final articles = await articleRepository.getArticlesByCategory(null, page: 1, pageSize: 100);
+      article = articles.firstWhere(
+        (a) => a.id == articleId,
+        orElse: () => articles.first,
+      );
+    } else if (articleUrl != null) {
+      // Try to find article by URL
+      final articles = await articleRepository.getArticlesByCategory(null, page: 1, pageSize: 100);
+      article = articles.firstWhere(
+        (a) => a.url == articleUrl,
+        orElse: () => articles.first,
+      );
+    }
+    
+    if (article != null && navigatorKey.currentState != null) {
+      // Check if article is bookmarked
+      final bookmarkService = BookmarkService();
+      final isBookmarked = await bookmarkService.isBookmarked(article!);
+      
+      navigatorKey.currentState!.push(
+        MaterialPageRoute(
+          builder: (context) => ArticleDetailScreen(
+            article: article!,
+            isBookmarked: isBookmarked,
+            heroTag: 'notification-${article.id}',
+            onBookmarkToggle: () {
+              // Handle bookmark toggle if needed
+              // The screen will handle the actual toggle
+            },
+          ),
+        ),
+      );
+    }
+  } catch (e) {
+    debugPrint('Error navigating to article: $e');
+    // Fallback: navigate to home
+    navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const MainScreen(initialTab: 0)),
+      (route) => false,
+    );
+  }
+}
+
+/// Navigate to video player
+void _navigateToVideo(String videoId, bool isShorts) {
+  if (navigatorKey.currentState == null) return;
+  
+  if (isShorts) {
+    // For shorts, we need to get the video list first
+    // For now, navigate to watch screen
+    navigatorKey.currentState!.push(
+      MaterialPageRoute(
+        builder: (context) => YouTubePlayerScreen(
+          videoId: videoId,
+          isShorts: true,
+        ),
+      ),
+    );
+  } else {
+    navigatorKey.currentState!.push(
+      MaterialPageRoute(
+        builder: (context) => YouTubePlayerScreen(
+          videoId: videoId,
+          isShorts: false,
+        ),
+      ),
+    );
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -84,7 +208,8 @@ void main() async {
     }
 
     try {
-      await NotificationService().init();
+      await NotificationService().init(onTap: _handleNotificationTap);
+      await NotificationManager().initialize();
       BackgroundNotificationService().initialize();
       debugPrint("✅ Notification services initialized");
     } catch (e) {
@@ -305,7 +430,7 @@ class _SplashScreenState extends State<SplashScreen>
     ]).animate(_controller);
 
     return Material(
-      color: Colors.black,
+      color: const Color(0xFFE5FF10), // Ubah background luar menjadi warna #e5ff10
       child: Center(
         child: AnimatedBuilder(
           animation: _controller,
@@ -317,7 +442,7 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Padding(
                   padding: const EdgeInsets.all(36.0),
                   child: Image.asset(
-                    'assets/images/icon-app.png',
+                    'assets/images/banner-owrite-white.jpg',
                     width: logoSize,
                     height: logoSize,
                   ),
@@ -369,6 +494,7 @@ class MyApp extends StatelessWidget {
           themeController: themeProvider,
           builder: (context, theme) {
             return MaterialApp(
+              navigatorKey: navigatorKey,
               title: strings.appTitle,
               debugShowCheckedModeBanner: false,
               theme: lightThemeData.copyWith(
@@ -453,6 +579,7 @@ class _MainScreenState extends State<MainScreen>
 
   @override
   void dispose() {
+    _removeToast();
     _tabController.dispose();
     super.dispose();
   }
@@ -494,47 +621,75 @@ class _MainScreenState extends State<MainScreen>
         _allBookmarkedArticles.any((a) => a.id == article.id);
     final authService = AuthService();
     final user = await authService.getCurrentUser();
-    final bool isGuest = user == null || user['username'] == 'Guest';
+    // Commented out: Original guest check with login redirect
+    // final bool isGuest = user == null || user['username'] == 'Guest';
+    // if (isGuest) {
+    //   _showLoginRequiredSnackBar("Masuk untuk menyimpan artikel ini");
+    //   if (mounted) setState(() => _isHandlingBookmark = false);
+    //   return;
+    // }
 
-    if (isGuest) {
-      _showLoginRequiredSnackBar("Masuk untuk menyimpan artikel ini");
-      if (mounted) setState(() => _isHandlingBookmark = false);
-      return;
-    }
+    // New: Show notification instead of redirecting to login
+    _showBookmarkDisabledSnackBar("Tidak bisa menyimpan artikel untuk saat ini");
+    if (mounted) setState(() => _isHandlingBookmark = false);
+    return;
 
-    try {
-      if (isCurrentlyBookmarked) {
-        debugPrint("Attempting to remove simple bookmark...");
-        bool removed = await _bookmarkService.removeBookmark(article);
-        if (removed && mounted) {
-          debugPrint("Bookmark removed, reloading state...");
-          await _loadAllBookmarks();
-          _showSuccessSnackBar('Artikel dihapus dari bookmark');
-        } else {
-          debugPrint("Bookmark remove reported false.");
-          if (mounted) await _loadAllBookmarks();
-        }
-      } else {
-        debugPrint("Attempting to add simple bookmark...");
-        bool added = await _bookmarkService.addSimpleBookmark(article);
-        if (added && mounted) {
-          debugPrint("Bookmark added, reloading state...");
-          await _loadAllBookmarks();
-          _showSuccessSnackBar('Artikel disimpan ke bookmark');
-        } else if (!added && mounted) {
-          await _loadAllBookmarks();
-          _showSuccessSnackBar('Artikel sudah ada di bookmark');
-        }
-      }
-    } catch (e) {
-      debugPrint("Error during simple bookmark toggle: $e");
-      if (mounted) {
-        _showErrorSnackBar('Terjadi kesalahan bookmark: ${e.toString()}');
-      }
-    } finally {
-      debugPrint("Resetting bookmark handling flag.");
-      if (mounted) setState(() => _isHandlingBookmark = false);
-    }
+    // Commented out: Original bookmark functionality
+    // try {
+    //   if (isCurrentlyBookmarked) {
+    //     debugPrint("Attempting to remove simple bookmark...");
+    //     bool removed = await _bookmarkService.removeBookmark(article);
+    //     if (removed && mounted) {
+    //       debugPrint("Bookmark removed, reloading state...");
+    //       await _loadAllBookmarks();
+    //       _showSuccessSnackBar('Artikel dihapus dari bookmark');
+    //     } else {
+    //       debugPrint("Bookmark remove reported false.");
+    //       if (mounted) await _loadAllBookmarks();
+    //     }
+    //   } else {
+    //     debugPrint("Attempting to add simple bookmark...");
+    //     bool added = await _bookmarkService.addSimpleBookmark(article);
+    //     if (added && mounted) {
+    //       debugPrint("Bookmark added, reloading state...");
+    //       await _loadAllBookmarks();
+    //       _showSuccessSnackBar('Artikel disimpan ke bookmark');
+    //     } else if (!added && mounted) {
+    //       await _loadAllBookmarks();
+    //       _showSuccessSnackBar('Artikel sudah ada di bookmark');
+    //     }
+    //   }
+    // } catch (e) {
+    //   debugPrint("Error during simple bookmark toggle: $e");
+    //   if (mounted) {
+    //     _showErrorSnackBar('Terjadi kesalahan bookmark: ${e.toString()}');
+    //   }
+    // } finally {
+    //   debugPrint("Resetting bookmark handling flag.");
+    //   if (mounted) setState(() => _isHandlingBookmark = false);
+    // }
+  }
+
+  void _showBookmarkDisabledSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.yellow[700]),
+            const SizedBox(width: 12),
+            Expanded(
+                child: Text(message,
+                    style: const TextStyle(color: Colors.white))),
+          ],
+        ),
+        backgroundColor: const Color(0xFF333333),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   void _onItemTapped(int index) {
@@ -563,7 +718,9 @@ class _MainScreenState extends State<MainScreen>
       debugPrint(
           "Notification permission requested, new status: $requestedStatus");
       if (requestedStatus.isGranted || requestedStatus.isLimited) {
-        await BackgroundNotificationService().setNotificationsEnabled(true);
+        final bgService = BackgroundNotificationService();
+        await bgService.setNotificationsEnabled(true);
+        debugPrint("✅ Notification permission granted, background service enabled");
       } else if (requestedStatus.isPermanentlyDenied && mounted) {
         _showPermissionPermanentlyDeniedDialog(
           title: 'Notifikasi Dinonaktifkan',
@@ -580,8 +737,9 @@ class _MainScreenState extends State<MainScreen>
         strings: strings,
       );
     } else if (status.isGranted || status.isProvisional) {
-      await BackgroundNotificationService().setNotificationsEnabled(true);
-      debugPrint("Notification permission already granted.");
+      final bgService = BackgroundNotificationService();
+      await bgService.setNotificationsEnabled(true);
+      debugPrint("✅ Notification permission already granted, background service enabled");
     }
   }
 
@@ -682,7 +840,7 @@ class _MainScreenState extends State<MainScreen>
       case 2:
         return const WatchScreen();
       case 3:
-        return AboutScreen(
+        return LinkScreen(
           onNavigateToHome: () => _onItemTapped(0),
         );
       default:
@@ -776,29 +934,74 @@ class _MainScreenState extends State<MainScreen>
     );
   }
 
-  void _showExitConfirmationSnackBar() {
+  OverlayEntry? _toastOverlayEntry;
+  
+  void _showExitConfirmationToast() {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).removeCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.info_outline, color: Colors.yellow[700]),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Tekan sekali lagi untuk keluar',
-                style: TextStyle(color: Colors.white),
+    
+    // Hapus toast sebelumnya jika ada
+    _removeToast();
+    
+    final overlay = Overlay.of(context);
+    _toastOverlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        bottom: 100,
+        left: 0,
+        right: 0,
+        child: Material(
+          color: Colors.transparent,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF333333),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    'assets/images/icon-app.png',
+                    width: 24,
+                    height: 24,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Tekan sekali lagi untuk keluar',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
-        backgroundColor: const Color(0xFF333333),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
+    
+    overlay.insert(_toastOverlayEntry!);
+    
+    // Hapus overlay setelah 2 detik
+    Future.delayed(const Duration(seconds: 2), () {
+      _removeToast();
+    });
+  }
+  
+  void _removeToast() {
+    if (_toastOverlayEntry != null) {
+      _toastOverlayEntry!.remove();
+      _toastOverlayEntry = null;
+    }
   }
 
   Future<bool> _onWillPop() async {
@@ -814,7 +1017,7 @@ class _MainScreenState extends State<MainScreen>
 
     if (isWarning) {
       _lastPressedAt = now;
-      _showExitConfirmationSnackBar();
+      _showExitConfirmationToast();
       return false;
     }
 
@@ -856,7 +1059,7 @@ class _MainScreenState extends State<MainScreen>
         color: background,
         border: Border(
           top: BorderSide(
-            color: Colors.transparent,
+            color: isDark ? Colors.grey[800]! : Colors.grey[400]!,
             width: 1.0,
           ),
         ),
@@ -988,7 +1191,7 @@ class _MainScreenState extends State<MainScreen>
                   ),
                 ),
               ),
-              // Custom Account SVG icon + "Account"
+              // Custom Link SVG icon + "LINK"
               Expanded(
                 child: InkWell(
                   onTap: () => _onItemTapped(3),
@@ -1004,7 +1207,7 @@ class _MainScreenState extends State<MainScreen>
                             child: SvgPicture.string(
                               '''
                               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                                <path fill="${_selectedIndex == 3 ? colorToHex(activeColor) : colorToHex(inactiveColor)}" d="M12 4a4 4 0 0 1 4 4a4 4 0 0 1-4 4a4 4 0 0 1-4-4a4 4 0 0 1 4-4m0 2a2 2 0 0 0-2 2a2 2 0 0 0 2 2a2 2 0 0 0 2-2a2 2 0 0 0-2-2m0 7c2.67 0 8 1.33 8 4v3H4v-3c0-2.67 5.33-4 8-4m0 1.9c-2.97 0-6.1 1.46-6.1 2.1v1.1h12.2V17c0-.64-3.13-2.1-6.1-2.1Z"/>
+                                <path fill="${_selectedIndex == 3 ? colorToHex(activeColor) : colorToHex(inactiveColor)}" d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1M8 13h8v-2H8v2m9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5Z"/>
                               </svg>
                               ''',
                               width: 24,
@@ -1015,7 +1218,7 @@ class _MainScreenState extends State<MainScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'ACCOUNT',
+                        'LINK',
                         style: TextStyle(
                           fontSize: 12,
                           color:

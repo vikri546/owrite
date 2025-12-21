@@ -8,8 +8,8 @@ class ThemeProvider with ChangeNotifier {
   bool _isThemeChanging = false;
 
   // Define primary colors for dark/light backgrounds
-  static const Color darkColor = Color(0xFF000000); // pure black
-  static const Color lightColor = Color(0xFFFFFFFF); // pure white
+  static const Color darkColor = Color(0xFF1A1A1A); // #1a1a1a
+  static const Color lightColor = Color(0xFFF5F5F5); // #f5f5f5
 
   ThemeProvider() {
     _loadThemePreference();

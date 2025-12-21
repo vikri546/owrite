@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/article.dart';
 import '../repositories/article_repository.dart';
 import 'notification_service.dart';
+import 'notification_manager.dart';
 
 class BackgroundNotificationService {
   static const String _taskName = 'backgroundNotificationTask';
@@ -17,6 +18,7 @@ class BackgroundNotificationService {
 
   final NotificationService _notificationService = NotificationService();
   final ArticleRepository _articleRepository = ArticleRepository();
+  final NotificationManager _notificationManager = NotificationManager();
 
   // Available categories from API
   static const List<String> _availableCategories = [
@@ -31,21 +33,55 @@ class BackgroundNotificationService {
 
   // Initialize background service
   Future<void> initialize() async {
-    await Workmanager().initialize(callbackDispatcher);
+    try {
+      await _notificationManager.initialize();
+      await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
+      
+      print('✅ WorkManager initialized');
 
-    // Register periodic task for notifications
-    await Workmanager().registerPeriodicTask(
-      _periodicTaskName,
-      _periodicTaskName,
-      frequency: const Duration(hours: 4), // Every 4 hours
-      constraints: Constraints(
-        networkType: NetworkType.connected,
-        requiresBatteryNotLow: false,
-        requiresCharging: false,
-        requiresDeviceIdle: false,
-        requiresStorageNotLow: false,
-      ),
-    );
+      // Check if notifications are enabled
+      final isEnabled = await areNotificationsEnabled();
+      if (!isEnabled) {
+        print('⚠️ Notifications are disabled');
+        return;
+      }
+
+      // Cancel existing tasks first
+      await Workmanager().cancelAll();
+      
+      // Register periodic task for notifications (minimum 15 minutes)
+      // Kita akan gunakan 15 menit sebagai minimum, tapi logika di dalam akan cek interval
+      await Workmanager().registerPeriodicTask(
+        _periodicTaskName,
+        _periodicTaskName,
+        frequency: const Duration(minutes: 15), // Minimum frequency
+        constraints: Constraints(
+          networkType: NetworkType.connected,
+          requiresBatteryNotLow: false,
+          requiresCharging: false,
+          requiresDeviceIdle: false,
+          requiresStorageNotLow: false,
+        ),
+        initialDelay: const Duration(minutes: 15), // Start after 15 minutes
+      );
+      
+      print('✅ Periodic notification task registered');
+      
+      // Register one-off task untuk test (akan jalan setelah 1 menit)
+      await Workmanager().registerOneOffTask(
+        'test_notification_task',
+        'test_notification_task',
+        initialDelay: const Duration(minutes: 1),
+        constraints: Constraints(
+          networkType: NetworkType.connected,
+        ),
+      );
+      
+      print('✅ Test notification task registered (will run in 1 minute)');
+      
+    } catch (e) {
+      print('❌ Error initializing background notification service: $e');
+    }
   }
 
   // Start background task
@@ -71,7 +107,8 @@ class BackgroundNotificationService {
   // Check if notifications are enabled
   Future<bool> areNotificationsEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('notifications_enabled') ?? false;
+    // Default to true if not set
+    return prefs.getBool('notifications_enabled') ?? true;
   }
 
   // Get enabled categories from preferences
@@ -100,10 +137,13 @@ class BackgroundNotificationService {
     await prefs.setBool('notifications_enabled', enabled);
 
     if (enabled) {
-      await startBackgroundTask();
+      // Re-initialize to register tasks
+      await initialize();
+      print('✅ Notifications enabled, background tasks registered');
     } else {
       await stopBackgroundTask();
       await _notificationService.cancelAllNotifications();
+      print('⚠️ Notifications disabled, background tasks cancelled');
     }
   }
 
@@ -334,29 +374,98 @@ class BackgroundNotificationService {
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
+    print('🔄 Background task started: $task');
+    
     try {
-      final backgroundService = BackgroundNotificationService();
-
+      // Initialize services (important in background isolate)
+      final notificationManager = NotificationManager();
+      await notificationManager.initialize();
+      
+      final notificationService = NotificationService();
+      await notificationService.init();
+      
+      final random = Random();
+      
+      // Check if notifications are enabled
+      final prefs = await SharedPreferences.getInstance();
+      final isEnabled = prefs.getBool('notifications_enabled') ?? true;
+      
+      if (!isEnabled) {
+        print('⚠️ Notifications disabled, skipping task');
+        return Future.value(true);
+      }
+      
+      print('✅ Notifications enabled, proceeding with task');
+      
+      // List semua kategori notifikasi (kecuali yang memerlukan VideoProvider di background)
+      final allCategories = NotificationCategory.values.where((cat) {
+        // Untuk background, skip video notifications yang kompleks
+        // Tapi kita bisa coba semua karena NotificationManager sudah handle
+        return true;
+      }).toList();
+      
       switch (task) {
         case 'backgroundNotificationTask':
         case 'periodicNotificationTask':
-          // Get enabled categories and send notification
-          final enabledCategories =
-              await backgroundService.getEnabledCategories();
-          if (enabledCategories.isNotEmpty) {
-            final random = Random();
-            final category =
-                enabledCategories[random.nextInt(enabledCategories.length)];
-            await backgroundService.sendCategoryNotification(category);
+        case 'test_notification_task':
+          print('📢 Sending periodic notification...');
+          
+          // Untuk test task, kirim notifikasi langsung
+          if (task == 'test_notification_task') {
+            // Coba kirim notifikasi berita penting untuk test
+            await notificationManager.sendNotificationByCategory(
+              NotificationCategory.beritaPenting,
+            );
+            print('✅ Test notification sent');
+          } else {
+            // Untuk periodic task, cek apakah sudah cukup waktu sejak notifikasi terakhir
+            final lastTime = prefs.getInt('last_notification_time');
+            final now = DateTime.now();
+            
+            if (lastTime != null) {
+              final lastNotificationTime = DateTime.fromMillisecondsSinceEpoch(lastTime);
+              final hoursSinceLastNotification = now.difference(lastNotificationTime).inHours;
+              
+              // Hanya kirim jika sudah lebih dari 2 jam
+              if (hoursSinceLastNotification < 2) {
+                print('⏰ Too soon since last notification (${hoursSinceLastNotification}h), skipping');
+                return Future.value(true);
+              }
+            }
+            
+            // Pilih kategori random untuk dikirim
+            if (allCategories.isNotEmpty) {
+              // Exclude artikel24Jam dari periodic (hanya untuk daily task)
+              final availableCategories = allCategories.where((cat) => 
+                cat != NotificationCategory.artikel24Jam
+              ).toList();
+              
+              if (availableCategories.isNotEmpty) {
+                final selectedCategory = availableCategories[random.nextInt(availableCategories.length)];
+                print('📢 Sending notification: $selectedCategory');
+                await notificationManager.sendNotificationByCategory(selectedCategory);
+                await prefs.setInt('last_notification_time', now.millisecondsSinceEpoch);
+                print('✅ Notification sent successfully');
+              }
+            }
           }
           break;
+          
+        case 'daily_24hour_notification':
+          print('📢 Sending 24-hour article notification...');
+          // Kirim notifikasi artikel 24 jam
+          await notificationManager.sendNotificationByCategory(NotificationCategory.artikel24Jam);
+          print('✅ 24-hour notification sent');
+          break;
+          
         default:
-          print('Unknown task: $task');
+          print('⚠️ Unknown task: $task');
       }
 
       return Future.value(true);
-    } catch (e) {
-      print('Background task error: $e');
+    } catch (e, stackTrace) {
+      print('❌ Background task error: $e');
+      print('Stack trace: $stackTrace');
       return Future.value(false);
     }
   });

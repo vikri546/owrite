@@ -6,6 +6,28 @@ import '../widgets/video_card.dart';
 import '../models/video.dart';
 import 'youtube_player_screen.dart';
 
+// --- TAMBAHAN: MANAGER UNTUK WISHLIST (SEDERHANA) ---
+class WishlistManager {
+  static final ValueNotifier<List<Video>> wishlist = ValueNotifier([]);
+
+  static void addToWishlist(BuildContext context, Video video) {
+    if (!wishlist.value.any((v) => v.id == video.id)) {
+      wishlist.value = [...wishlist.value, video];
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Video disimpan ke Wishlist')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Video sudah ada di Wishlist')),
+      );
+    }
+  }
+
+  static void removeFromWishlist(String videoId) {
+    wishlist.value = wishlist.value.where((v) => v.id != videoId).toList();
+  }
+}
+
 class WatchScreen extends StatefulWidget {
   const WatchScreen({Key? key}) : super(key: key);
 
@@ -15,71 +37,48 @@ class WatchScreen extends StatefulWidget {
 
 class _WatchScreenState extends State<WatchScreen> {
   bool _loadingMore = false;
-  final ScrollController _shortsScrollController = ScrollController();
-  bool _shortsIsFetching = false;
-  bool _shortsNoMoreData = false;
-  int _lastShortsLength = 0;
 
   @override
   void initState() {
     super.initState();
+    // Mengatur UI Mode agar immersive
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        // Load data awal
         Provider.of<VideoProvider>(context, listen: false)
             .loadVideosFromChannel('UC7LumXPdwm7UlBsyE0DQp6A', refresh: true);
       }
     });
-
-    _shortsScrollController.addListener(_handleShortsScroll);
   }
 
   @override
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    _shortsScrollController.removeListener(_handleShortsScroll);
-    _shortsScrollController.dispose();
     super.dispose();
   }
 
-  /// Auto-load shorts when reaching end
-  void _handleShortsScroll() async {
-    if (_shortsScrollController.position.extentAfter < 220 &&
-        !_shortsIsFetching &&
-        !_shortsNoMoreData) {
-      final provider = Provider.of<VideoProvider>(context, listen: false);
-
-      // Only trigger if there are more videos to load AND no loading in progress
-      if (provider.status != VideoLoadingStatus.loadingMore &&
-          provider.status != VideoLoadingStatus.noMoreData) {
-        setState(() {
-          _shortsIsFetching = true;
-        });
-        int before = provider.videos.length;
-        await provider.loadMoreVideos();
-        int after = provider.videos.length;
-        setState(() {
-          _shortsIsFetching = false;
-          // Mark no more data for shorts if list didn't grow
-          if (after == before) {
-            _shortsNoMoreData = true;
-          }
-        });
+  /// Helper untuk memparsing durasi string (e.g., "04:20") ke detik
+  int _parseDurationToSeconds(String duration) {
+    if (duration.isEmpty) return 0;
+    try {
+      final parts = duration.split(':').map((e) => int.tryParse(e) ?? 0).toList();
+      if (parts.length == 2) {
+        return parts[0] * 60 + parts[1];
+      } else if (parts.length == 3) {
+        return parts[0] * 3600 + parts[1] * 60 + parts[2];
       }
+    } catch (e) {
+      return 0;
     }
+    return 0;
   }
 
   Future<void> _openVideo(Video video) async {
     if (video.id.isEmpty) {
-      debugPrint('Error: Video ID is empty.');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal membuka video: ID tidak ditemukan.'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ID Video tidak valid')),
+      );
       return;
     }
     Navigator.push(
@@ -90,347 +89,147 @@ class _WatchScreenState extends State<WatchScreen> {
     );
   }
 
-  bool _isShorts(Video v) {
-    if (v.title.toLowerCase().contains('shorts')) {
-      return true;
-    }
-    if (v.duration.isNotEmpty) {
-      final parts = v.duration.split(':').map((e) => int.tryParse(e) ?? 0).toList();
-      int totalSeconds = 0;
-      if (parts.length == 2) {
-        totalSeconds = parts[0] * 60 + parts[1];
-      } else if (parts.length == 3) {
-        totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-      }
-      if (totalSeconds <= 300) {
-        return true;
-      }
-    }
-    return false;
+  void _openWishlistScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const WishlistScreen()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    const accentColor = Color(0xFFE5FF10);
-    final backgroundColor = isDark ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
+    const accentColor = Color(0xFFE5FF10); // Warna aksen kuning neon
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: backgroundColor,
+        extendBodyBehindAppBar: true, // Agar gradient full screen
         body: Consumer<VideoProvider>(
           builder: (context, videoProvider, child) {
             final status = videoProvider.status;
-            final videos = videoProvider.videos;
+            final allVideos = videoProvider.videos;
 
-            final List<Video> shortsVideos = videos.where(_isShorts).toList();
-            final List<Video> regularVideos = videos.where((v) => !_isShorts(v)).toList();
+            // --- LOGIKA FILTER UTAMA ---
+            // Hanya ambil video yang durasinya > 180 detik (3 menit)
+            // Dan HAPUS yang mengandung kata 'shorts' di title (jaga-jaga)
+            final List<Video> filteredVideos = allVideos.where((v) {
+              final seconds = _parseDurationToSeconds(v.duration);
+              final isShortsTitle = v.title.toLowerCase().contains('shorts');
+              return seconds > 180 && !isShortsTitle;
+            }).toList();
 
-            // Reset shortsNoMoreData if new videos loaded
-            if (shortsVideos.length > _lastShortsLength) {
-              _shortsNoMoreData = false;
-              _lastShortsLength = shortsVideos.length;
-            }
-
-            if (status == VideoLoadingStatus.loading) {
+            if (status == VideoLoadingStatus.loading && allVideos.isEmpty) {
               return _buildLoadingState(isDark);
             }
-            if (status == VideoLoadingStatus.error) {
+
+            if (status == VideoLoadingStatus.error && allVideos.isEmpty) {
               return _buildErrorState(
                 isDark,
                 videoProvider.errorMessage,
                 () => videoProvider.refresh(),
               );
             }
-            if (videos.isEmpty && (status == VideoLoadingStatus.loaded || status == VideoLoadingStatus.noMoreData)) {
-              return _buildEmptyState(isDark);
+
+            // Show empty state if no videos after filtering
+            if (filteredVideos.isEmpty && status != VideoLoadingStatus.loading) {
+              return _buildEmptyState(isDark, accentColor);
             }
 
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                return Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: isDark
-                          ? [
-                              const Color(0xFF050505),
-                              const Color(0xFF050505),
-                            ]
-                          : [
-                              const Color(0xFFFDFDFD),
-                              const Color(0xFFF3F3F3),
-                            ],
-                    ),
-                  ),
-                  child: RefreshIndicator(
-                    onRefresh: () => videoProvider.refresh(),
-                    color: accentColor,
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.only(
-                        top: 2,
-                        bottom: 0,
-                      ),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(30, 26, 20, 4),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'VIDEO',
-                              style: TextStyle(
-                                fontFamily: 'Arimo',
-                                fontWeight: FontWeight.w900,
-                                fontSize: 34,
-                                letterSpacing: 5,
-                                color: isDark
-                                    ? Colors.white.withOpacity(0.92)
-                                    : Colors.black.withOpacity(0.93),
-                                shadows: [
-                                  Shadow(
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                    color: isDark
-                                        ? Colors.black.withOpacity(0.06)
-                                        : Colors.white.withOpacity(0.05),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        ..._buildMainVideoContent(regularVideos, isDark),
-                        if (status == VideoLoadingStatus.loadingMore)
-                          _buildLoadingMoreIndicator(isDark),
-                        if (status == VideoLoadingStatus.noMoreData)
-                          _buildNoMoreDataIndicator(isDark),
-                        if (status != VideoLoadingStatus.loadingMore &&
-                            status != VideoLoadingStatus.noMoreData &&
-                            regularVideos.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-                            child: Center(
-                              child: SizedBox(
-                                width: 210,
-                                height: 46,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(8),
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        accentColor,
-                                        accentColor.withOpacity(0.8),
-                                      ],
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: accentColor.withOpacity(isDark ? 0.18 : 0.25),
-                                        blurRadius: 16,
-                                        offset: const Offset(0, 8),
-                                      ),
-                                    ],
-                                  ),
-                                  child: ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      elevation: 0,
-                                      backgroundColor: Colors.transparent,
-                                      shadowColor: Colors.transparent,
-                                      foregroundColor: Colors.black,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(28),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                                    ),
-                                    onPressed: () async {
-                                      if (_loadingMore) return;
-                                      setState(() {
-                                        _loadingMore = true;
-                                      });
-                                      await Provider.of<VideoProvider>(context, listen: false)
-                                          .loadMoreVideos();
-                                      setState(() {
-                                        _loadingMore = false;
-                                      });
-                                    },
-                                    child: _loadingMore
-                                        ? const SizedBox(
-                                            width: 22,
-                                            height: 22,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              valueColor: AlwaysStoppedAnimation<Color>(
-                                                Colors.black,
-                                              ),
-                                            ),
-                                          )
-                                        : Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: const [
-                                              Icon(
-                                                Icons.refresh_rounded,
-                                                size: 18,
-                                              ),
-                                              SizedBox(width: 8),
-                                              Text(
-                                                'Muat lebih banyak',
-                                                style: TextStyle(
-                                                  fontFamily: 'Inter',
-                                                  fontSize: 14.5,
-                                                  fontWeight: FontWeight.w700,
-                                                  letterSpacing: 0.4,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        if (shortsVideos.isNotEmpty) ...[
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(28, 28, 20, 0),
-                            child: Row(
+            return Container(
+              decoration: BoxDecoration(
+                // Gradient Background yang lebih menarik (Deep Dark)
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isDark
+                      ? [
+                          const Color(0xFF0F0F0F), // Sangat gelap
+                          const Color(0xFF1C1C1C), // Agak terang dikit
+                          const Color(0xFF050505), // Kembali gelap
+                        ]
+                      : [
+                          const Color(0xFFF0F0F0),
+                          const Color(0xFFFFFFFF),
+                        ],
+                ),
+              ),
+              child: RefreshIndicator(
+                onRefresh: () => videoProvider.refresh(),
+                color: accentColor,
+                backgroundColor: isDark ? const Color(0xFF222222) : Colors.white,
+                child: ListView.builder(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 100),
+                  // Jumlah item = Header + List Video + Loading Indicator/Tombol Load More
+                  itemCount: 1 + filteredVideos.length + 1,
+                  itemBuilder: (context, index) {
+                    // 1. Header Section
+                    if (index == 0) {
+                      return Padding(
+                        // Di sini diubah vertikal padding atas semula 60 menjadi 24 agar space kosong hilang
+                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'SHORTS',
+                                  'OWRITE VIDEO',
                                   style: TextStyle(
                                     fontFamily: 'Arimo',
                                     fontWeight: FontWeight.w900,
-                                    fontSize: 26,
-                                    letterSpacing: 5,
+                                    fontSize: 32,
+                                    letterSpacing: 2,
                                     color: isDark
                                         ? Colors.white.withOpacity(0.95)
-                                        : Colors.black.withOpacity(0.94),
-                                    shadows: [
-                                      Shadow(
-                                        blurRadius: 2,
-                                        offset: const Offset(0, 2),
-                                        color: isDark
-                                            ? Colors.black.withOpacity(0.06)
-                                            : Colors.white.withOpacity(0.05),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Tooltip(
-                                  message:
-                                      'Bisa digeser secara horizontal untuk menemukan konten lain',
-                                  preferBelow: false,
-                                  child: Icon(
-                                    Icons.swipe,
-                                    size: 18,
-                                    color: isDark
-                                        ? accentColor.withOpacity(0.9)
-                                        : accentColor,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  'geser untuk eksplor',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontFamily: 'Inter',
-                                    color: isDark
-                                        ? Colors.grey[300]
-                                        : Colors.grey[800],
-                                    fontWeight: FontWeight.w500,
+                                        : Colors.black.withOpacity(0.9),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            height: 290,
-                            child: NotificationListener<ScrollNotification>(
-                              // Also allow for drag-scroll autoload in web/desktop/etc
-                              onNotification: (scroll) {
-                                // Fallback: ensure autoload also triggers for pointer scrolling
-                                if (_shortsScrollController.hasClients && !_shortsIsFetching && !_shortsNoMoreData) {
-                                  if (_shortsScrollController.position.extentAfter < 220) {
-                                    _handleShortsScroll();
-                                  }
-                                }
-                                return false;
-                              },
-                              child: ListView.separated(
-                                controller: _shortsScrollController,
-                                scrollDirection: Axis.horizontal,
-                                physics: const BouncingScrollPhysics(),
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                itemCount: shortsVideos.length +
-                                    (_shortsIsFetching ? 1 : 0) +
-                                    (_shortsNoMoreData ? 1 : 0),
-                                separatorBuilder: (context, index) =>
-                                    const SizedBox(width: 16),
-                                itemBuilder: (context, index) {
-                                  if (_shortsIsFetching && index == shortsVideos.length) {
-                                    return SizedBox(
-                                      width: 180,
-                                      child: Center(
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(vertical: 40.0),
-                                          child: SizedBox(
-                                            height: 30,
-                                            width: 30,
-                                            child: CircularProgressIndicator(
-                                              color: accentColor,
-                                              strokeWidth: 2,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  if (_shortsNoMoreData &&
-                                      index == shortsVideos.length +
-                                          (_shortsIsFetching ? 1 : 0)) {
-                                    return SizedBox(
-                                      width: 180,
-                                      child: Center(
-                                        child: Text(
-                                          'Semua shorts telah dimuat',
-                                          style: TextStyle(
-                                            color: isDark
-                                                ? Colors.grey[500]
-                                                : Colors.grey[600],
-                                            fontFamily: 'Inter',
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  final video = shortsVideos[index];
-                                  return SizedBox(
-                                    width: 180,
-                                    child: VideoCard(
-                                      video: video,
-                                      layout: VideoCardLayout.shorts,
-                                      onTap: () => _openVideo(video),
-                                    ),
-                                  );
-                                },
+                            // --- TOMBOL MASUK KE WISHLIST ---
+                            IconButton(
+                              onPressed: _openWishlistScreen,
+                              icon: Container(
+                                child: Icon(
+                                  Icons.bookmarks_outlined,
+                                  color: isDark ? accentColor : Colors.black,
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 28),
-                        ],
-                      ],
-                    ),
-                  ),
-                );
-              },
+                            )
+                          ],
+                        ),
+                      );
+                    }
+
+                    // 2. Footer Section (Loading More / Button)
+                    if (index == filteredVideos.length + 1) {
+                      return _buildFooterSection(
+                          status, isDark, accentColor, filteredVideos.isNotEmpty);
+                    }
+
+                    // 3. Video List Item
+                    final videoIndex = index - 1; // Adjust index karena ada header
+                    final video = filteredVideos[videoIndex];
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 24, left: 20, right: 20),
+                      child: VideoCard(
+                        video: video,
+                        layout: VideoCardLayout.full, // Selalu pakai layout Full
+                        onTap: () => _openVideo(video),
+                        // Callback untuk tombol aksi di card
+                        onAddToWishlist: () => WishlistManager.addToWishlist(context, video),
+                      ),
+                    );
+                  },
+                ),
+              ),
             );
           },
         ),
@@ -438,179 +237,157 @@ class _WatchScreenState extends State<WatchScreen> {
     );
   }
 
-  List<Widget> _buildMainVideoContent(List<Video> videos, bool isDark) {
-    if (videos.isEmpty) return [
-      Center(child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24.0),
-        child: Text(
-          'Tidak ada video reguler ditemukan',
-          style: TextStyle(
-            fontFamily: 'Inter',
-            color: isDark ? Colors.grey[500] : Colors.grey[700],
-            fontSize: 14,
-          ),
-        ),
-      )),
-    ];
-
-    final List<Widget> widgets = [];
-
-    if (videos.isNotEmpty) {
-      widgets.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8, right: 16, left: 16, top: 0),
-          child: VideoCard(
-            video: videos[0],
-            layout: VideoCardLayout.full,
-            onTap: () => _openVideo(videos[0]),
-          ),
-        ),
+  // --- Widget Bagian Bawah (Tombol Load More / Loading) ---
+  Widget _buildFooterSection(VideoLoadingStatus status, bool isDark,
+      Color accentColor, bool hasData) {
+    if (status == VideoLoadingStatus.loadingMore) {
+      return Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Center(
+            child: CircularProgressIndicator(color: accentColor, strokeWidth: 2)),
       );
     }
 
-    if (videos.length > 1) {
-      widgets.addAll(
-        List.generate(videos.length - 1, (i) {
-          final idx = i + 1;
-          return Padding(
-            padding: EdgeInsets.only(
-                right: 16, left: 16, bottom: 4, top: idx == 1 ? 0 : 0),
-            child: VideoCard(
-              video: videos[idx],
-              layout: VideoCardLayout.horizontal,
-              onTap: () => _openVideo(videos[idx]),
+    if (status == VideoLoadingStatus.noMoreData) {
+      return Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Center(
+          child: Text(
+            'Semua video telah ditampilkan',
+            style: TextStyle(
+              color: isDark ? Colors.grey[600] : Colors.grey[400],
+              fontFamily: 'Inter',
             ),
-          );
-        }),
+          ),
+        ),
       );
     }
-    return widgets;
+
+    // Tombol Load More Manual
+    if (hasData) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+        child: SizedBox(
+          height: 50,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDark ? const Color(0xFFE5FF10) : Colors.black,
+              foregroundColor: accentColor,
+              elevation: 0,
+              side: BorderSide(
+                color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                width: 1,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(0),
+              ),
+            ),
+            onPressed: () async {
+              if (_loadingMore) return;
+              setState(() => _loadingMore = true);
+              await Provider.of<VideoProvider>(context, listen: false)
+                  .loadMoreVideos();
+              setState(() => _loadingMore = false);
+            },
+            child: _loadingMore
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        color: accentColor, strokeWidth: 2))
+                : Text(
+                    'SHOW MORE',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.black : Colors.white,
+                    ),
+                  ),
+          )
+        ),
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   Widget _buildLoadingState(bool isDark) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(
-            color: const Color(0xFFE5FF10),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Memuat video...',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              color: isDark ? Colors.grey[400] : Colors.grey[600],
-            ),
-          ),
-        ],
+    return Container(
+      color: isDark ? const Color(0xFF0F0F0F) : const Color(0xFFF5F5F5),
+      child: Center(
+        child: CircularProgressIndicator(color: const Color(0xFFE5FF10)),
       ),
     );
   }
 
-  Widget _buildErrorState(bool isDark, String errorMessage, VoidCallback onRetry) {
-    final isQuotaError = errorMessage.toLowerCase().contains('quota') ||
-        errorMessage.toLowerCase().contains('limit') ||
-        errorMessage.toLowerCase().contains('habis');
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
+  Widget _buildErrorState(
+      bool isDark, String errorMessage, VoidCallback onRetry) {
+    return Container(
+      color: isDark ? const Color(0xFF0F0F0F) : const Color(0xFFF5F5F5),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline,
+                size: 48, color: isDark ? Colors.grey[700] : Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(errorMessage,
+                style: TextStyle(
+                    color: isDark ? Colors.grey[400] : Colors.grey[600])),
+            TextButton(
+              onPressed: onRetry,
+              child: const Text('Coba Lagi',
+                  style: TextStyle(color: Color(0xFFE5FF10))),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(bool isDark, Color accentColor) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  const Color(0xFF0F0F0F),
+                  const Color(0xFF1C1C1C),
+                  const Color(0xFF050505),
+                ]
+              : [
+                  const Color(0xFFF0F0F0),
+                  const Color(0xFFFFFFFF),
+                ],
+        ),
+      ),
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              isQuotaError ? Icons.schedule_outlined : Icons.error_outline,
-              size: 64,
-              color: isQuotaError
-                  ? (isDark ? Colors.orange[300] : Colors.orange[600])
-                  : (isDark ? Colors.grey[600] : Colors.grey[400]),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              errorMessage,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: isQuotaError ? 16 : 14,
-                fontWeight: isQuotaError ? FontWeight.w500 : FontWeight.normal,
-                color: isDark ? Colors.grey[300] : Colors.grey[700],
-                height: 1.5,
-              ),
+              Icons.play_circle_outline,
+              size: 80,
+              color: isDark ? Colors.grey[700] : Colors.grey[400],
             ),
             const SizedBox(height: 24),
-            if (!isQuotaError)
-              ElevatedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Coba Lagi'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE5FF10),
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                ),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.orange[900]?.withOpacity(0.2) : Colors.orange[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isDark ? Colors.orange[800]! : Colors.orange[200]!,
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      size: 20,
-                      color: isDark ? Colors.orange[300] : Colors.orange[700],
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Kuota akan direset setiap hari',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 12,
-                        color: isDark ? Colors.orange[300] : Colors.orange[700],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(bool isDark) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.video_library_outlined,
-              size: 64,
-              color: isDark ? Colors.grey[600] : Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
             Text(
-              'Tidak ada video ditemukan',
+              'Belum ada video',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black,
+                fontFamily: 'Arimo',
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Video akan muncul di sini setelah data dimuat',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+                fontSize: 14,
                 color: isDark ? Colors.grey[400] : Colors.grey[600],
+                fontFamily: 'Inter',
               ),
             ),
           ],
@@ -618,33 +395,102 @@ class _WatchScreenState extends State<WatchScreen> {
       ),
     );
   }
+}
 
-  Widget _buildLoadingMoreIndicator(bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32.0),
-      child: Center(
-        child: CircularProgressIndicator(
-          color: const Color(0xFFE5FF10),
-        ),
-      ),
-    );
-  }
+// --- SCREEN TAMBAHAN: TAMPILAN WISHLIST ---
+class WishlistScreen extends StatelessWidget {
+  const WishlistScreen({Key? key}) : super(key: key);
 
-  Widget _buildNoMoreDataIndicator(bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32.0),
-      child: Center(
-        child: Text(
-          'Semua video telah dimuat',
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const accentColor = Color(0xFFE5FF10);
+
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0F0F0F) : Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          'WISHLIST',
           style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 13,
-            color: isDark ? Colors.grey[500] : Colors.grey[600],
+            fontFamily: 'Arimo',
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black,
           ),
+          textAlign: TextAlign.center,
         ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: ValueListenableBuilder<List<Video>>(
+        valueListenable: WishlistManager.wishlist,
+        builder: (context, savedVideos, _) {
+          if (savedVideos.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.bookmarks_outlined,
+                      size: 60, color: Colors.grey.withOpacity(0.5)),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Belum ada video disimpan',
+                    style: TextStyle(
+                        color: Colors.grey.withOpacity(0.8), fontFamily: 'Inter'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(20),
+            itemCount: savedVideos.length,
+            itemBuilder: (context, index) {
+              final video = savedVideos[index];
+              return Dismissible(
+                key: Key(video.id),
+                direction: DismissDirection.endToStart,
+                onDismissed: (_) {
+                  WishlistManager.removeFromWishlist(video.id);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Dihapus dari wishlist')),
+                  );
+                },
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20),
+                  color: Colors.red.withOpacity(0.8),
+                  child: const Icon(Icons.delete, color: Colors.white),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: VideoCard(
+                    video: video,
+                    layout: VideoCardLayout.full,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => YouTubePlayerScreen(videoId: video.id),
+                        ),
+                      );
+                    },
+                    // Di wishlist, menu opsinya mungkin berbeda atau dihilangkan
+                    // Tapi kita biarkan agar tetap bisa share
+                    onAddToWishlist: null, 
+                    isWishlistMode: true, // Mode khusus untuk hapus
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
-
-  // _showSearchDialog tidak dimodifikasi
 }

@@ -13,25 +13,64 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _fln =
       FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  
+  // Callback untuk notification tap
+  static Function(String?)? _onNotificationTap;
 
-  Future<void> init() async {
-    if (_initialized) return;
+  Future<void> init({Function(String?)? onTap}) async {
+    if (_initialized) {
+      if (onTap != null) _onNotificationTap = onTap;
+      return;
+    }
+    
+    _onNotificationTap = onTap;
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    
+    // iOS initialization settings
+    const iosInit = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+      onDidReceiveLocalNotification: null,
+    );
+    
     // Provide Linux settings to avoid runtime error on Linux target
     const linuxInit = LinuxInitializationSettings(
       defaultActionName: 'Open',
     );
     const initializationSettings = InitializationSettings(
       android: androidInit,
+      iOS: iosInit,
       linux: linuxInit,
     );
-    await _fln.initialize(initializationSettings);
+    await _fln.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: _handleNotificationResponse,
+    );
 
-    // Create notification channels
+    // Create notification channels (Android only)
     await _createNotificationChannels();
+    
+    // Check if app was launched from notification
+    final details = await _fln.getNotificationAppLaunchDetails();
+    if (details?.didNotificationLaunchApp ?? false) {
+      if (_onNotificationTap != null) {
+        final notificationResponse = details!.notificationResponse;
+        if (notificationResponse != null && notificationResponse.payload != null) {
+          _onNotificationTap!(notificationResponse.payload);
+        }
+      }
+    }
 
     _initialized = true;
+  }
+
+  // Static handler for notification response
+  static void _handleNotificationResponse(NotificationResponse response) {
+    if (_onNotificationTap != null) {
+      _onNotificationTap!(response.payload);
+    }
   }
 
   Future<void> _createNotificationChannels() async {
@@ -141,7 +180,15 @@ class NotificationService {
       silent: false,
       ticker: 'Breaking News: $title',
     );
-    final details = NotificationDetails(android: android);
+    
+    // iOS notification details
+    const ios = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    
+    final details = NotificationDetails(android: android, iOS: ios);
     await _fln.show(
         DateTime.now().millisecondsSinceEpoch % 100000, title, body, details,
         payload: payload);
@@ -178,7 +225,15 @@ class NotificationService {
       silent: false,
       ticker: 'Trending: $title',
     );
-    final details = NotificationDetails(android: android);
+    
+    // iOS notification details
+    const ios = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    
+    final details = NotificationDetails(android: android, iOS: ios);
     await _fln.show(DateTime.now().millisecondsSinceEpoch % 100000 + 1, title,
         body, details,
         payload: payload);
@@ -215,7 +270,15 @@ class NotificationService {
       silent: false,
       ticker: 'Recommendation: $title',
     );
-    final details = NotificationDetails(android: android);
+    
+    // iOS notification details
+    const ios = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    
+    final details = NotificationDetails(android: android, iOS: ios);
     await _fln.show(DateTime.now().millisecondsSinceEpoch % 100000 + 2, title,
         body, details,
         payload: payload);

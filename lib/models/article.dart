@@ -1,4 +1,3 @@
-// Mengimpor utility untuk membersihkan tag HTML
 import 'package:html_unescape/html_unescape.dart';
 
 class Article {
@@ -14,9 +13,18 @@ class Article {
   final String? content;
   final String category;
   final String? penulis;
-  final List<String> tags; // BARU: Untuk menyimpan keywords/tags
-  final String? imageCaption; // Untuk Caption Gambar
+  final List<String> tags; // Menyimpan Nama Tag (untuk display UI)
+  final List<int> tagIds;  // Menyimpan ID Tag (untuk logic filter)
+  final String? imageCaption; 
   final List<String> authorAvatars;
+
+  // Daftar ID Tag Penting
+  // 1810: Berita Penting (Utama)
+  // 113: Editorial (Digunakan untuk Section Berita Pilihan)
+  // 109: Headline
+  static const List<int> importantTagIds = [1810];
+  static const int headlineTagId = 109;       // ID untuk HEADLINE
+  static const int beritaPilihanTagId = 113;  // ID untuk BERITA PILIHAN (Editorial)
 
   Article({
     required this.id,
@@ -31,7 +39,8 @@ class Article {
     this.content,
     required this.category,
     this.penulis,
-    this.tags = const [], // BARU: Default empty list
+    this.tags = const [], 
+    this.tagIds = const [], 
     this.imageCaption,
     this.authorAvatars = const [],
   });
@@ -63,33 +72,29 @@ class Article {
           )?.toLocal() ?? publishedAt)
         : publishedAt;
 
+    // --- Parsing Author ---
     final Map<String, dynamic> embedded = json['_embedded'] ?? {};
-
     String? author;
-    // 1. Ambil dari _embedded seperti biasa
+    
+    // Coba ambil dari embedded author
     if (embedded['author'] != null && embedded['author'] is List) {
       final authorList = embedded['author'] as List;
       if (authorList.isNotEmpty && authorList[0] is Map) {
         final authorData = authorList[0] as Map;
-        final authorName = authorData['name']?.toString().trim() ?? '';
-        if (authorName.isNotEmpty) {
-          author = authorName;
-        }
+        author = authorData['name']?.toString().trim();
       }
     }
 
-    // 2. Kalau ada yoast_head_json['author'], gunakan itu (lebih lengkap)
-    if (json['yoast_head_json'] != null &&
-        json['yoast_head_json'] is Map &&
-        (json['yoast_head_json'] as Map)['author'] != null) {
+    // Fallback ke yoast data jika ada
+    if (author == null && json['yoast_head_json'] != null && (json['yoast_head_json'] as Map)['author'] != null) {
       final yoastAuthor = (json['yoast_head_json'] as Map)['author']?.toString();
       if (yoastAuthor != null && yoastAuthor.isNotEmpty) {
-        author = yoastAuthor; // contoh: "Hadi Febriansyah, Rahmat, Amin Suciady"
+        author = yoastAuthor.replaceAll(RegExp(r'\s*,\s*'), ' / ');
       }
     }
-
     author ??= 'Unknown Author';
 
+    // --- Parsing Image ---
     String? imageUrl;
     if (embedded['wp:featuredmedia'] != null && embedded['wp:featuredmedia'] is List && (embedded['wp:featuredmedia'] as List).isNotEmpty) {
       final media = embedded['wp:featuredmedia'][0];
@@ -108,26 +113,53 @@ class Article {
       imageUrl ??= media['source_url'];
     }
 
+    // --- Parsing Tags & Category ---
     String category = 'General';
+    List<String> extractedTagNames = [];
+    List<int> extractedTagIds = [];
+  
+    // PENTING: Ambil ID Tags dari root JSON 'tags'
+    if (json['tags'] != null && json['tags'] is List) {
+      for (var t in json['tags']) {
+        if (t is int) {
+          extractedTagIds.add(t);
+        } else if (t is String) {
+          final parsedId = int.tryParse(t);
+          if (parsedId != null) extractedTagIds.add(parsedId);
+        }
+      }
+    }
+
+    // 2. Ambil Nama Tags & Category dari embedded 'wp:term'
     if (embedded['wp:term'] != null && embedded['wp:term'] is List) {
-      final terms = embedded['wp:term'] as List;
-      final categoryList = terms.firstWhere(
-        (termList) => termList is List && termList.isNotEmpty && termList[0] is Map && termList[0]['taxonomy'] == 'category',
-        orElse: () => null
-      );
-      if (categoryList != null && categoryList is List && categoryList.isNotEmpty && categoryList[0] is Map) {
-        category = categoryList[0]['name'] ?? 'General';
+      for (var termList in (embedded['wp:term'] as List)) {
+        if (termList is List) {
+          for (var term in termList) {
+            if (term is Map) {
+              final taxonomy = term['taxonomy'];
+              final name = term['name'];
+              final termId = term['id']; 
+              
+              if (taxonomy == 'category' && category == 'General') {
+                category = name ?? 'General';
+              } else if (taxonomy == 'post_tag') {
+                if (name != null) extractedTagNames.add(name.toString());
+                // Backup: jika ID belum terambil dari root, ambil dari sini
+                if (termId != null && termId is int && !extractedTagIds.contains(termId)) {
+                  extractedTagIds.add(termId);
+                }
+              }
+            }
+          }
+        }
       }
     }
 
     String? penulis;
-    if (json['yoast_head_json'] != null &&
-        json['yoast_head_json'] is Map) {
+    if (json['yoast_head_json'] != null && json['yoast_head_json'] is Map) {
       final yoastData = json['yoast_head_json'] as Map;
-      if (yoastData['twitter_misc'] != null &&
-          yoastData['twitter_misc'] is Map &&
-          yoastData['twitter_misc']['Ditulis oleh'] != null) {
-        penulis = yoastData['twitter_misc']['Ditulis oleh'] as String;
+      if (yoastData['twitter_misc'] != null && yoastData['twitter_misc'] is Map) {
+        penulis = yoastData['twitter_misc']['Ditulis oleh'] as String?;
       }
     }
 
@@ -140,8 +172,6 @@ class Article {
       }
     }
 
-    // BARU: Parsing tags dari yoast_head_json > schema > @graph > keywords
-    List<String> tags = [];
     String? caption;
     if (json['yoast_head_json'] != null && json['yoast_head_json'] is Map) {
       final yoastData = json['yoast_head_json'] as Map;
@@ -149,16 +179,6 @@ class Article {
         final schema = yoastData['schema'] as Map;
         if (schema['@graph'] != null && schema['@graph'] is List) {
           final graph = schema['@graph'] as List;
-          for (var node in graph) {
-            if (node is Map && node['keywords'] != null && node['keywords'] is List) {
-              tags = (node['keywords'] as List)
-                  .where((item) => item is String && item.trim().isNotEmpty)
-                  .map((item) => item.toString().trim())
-                  .toList();
-              // Jangan break dulu di sini karena ingin ambil juga caption jika ada ImageObject setelah ini
-            }
-          }
-          // Loop lagi untuk mencari caption dari ImageObject
           for (var node in graph) {
             if (node is Map && node['@type'] == 'ImageObject') {
               caption = node['caption']?.toString();
@@ -182,56 +202,67 @@ class Article {
       content: content,
       category: category,
       penulis: penulis,
-      tags: tags, // BARU
-      imageCaption: caption, // simpan caption
+      tags: extractedTagNames,
+      tagIds: extractedTagIds, 
+      imageCaption: caption,
       authorAvatars: authorAvatars,
     );
   }
 
   Map<String, dynamic> toJson() {
     String authorString = author ?? 'Unknown Author';
-    if (authorString.contains(' / ')) {
-      authorString = authorString.replaceAll(' / ', ', ');
+    if (authorString.contains(',')) {
+      authorString = authorString.replaceAll(RegExp(r'\s*,\s*'), ' / ');
     }
 
     return {
       'id': int.tryParse(id) ?? 0,
       'link': url,
+      'tags': tagIds, 
       'date_gmt': publishedAt.toUtc().toIso8601String().replaceAll('Z', ''),
       'modified_gmt': modifiedAt.toUtc().toIso8601String().replaceAll('Z', ''),
       'title': {'rendered': title},
       'excerpt': {'rendered': description ?? ''},
       'content': {'rendered': content ?? ''},
       'twitter_misc': penulis != null ? {'Ditulis oleh': penulis} : null,
-      'yoast_head_json': (tags.isNotEmpty || urlToImage != null) ? {
-        'schema': {
-          '@graph': [
-            if (tags.isNotEmpty) {'keywords': tags},
-            if (urlToImage != null) {
-              "@type": "ImageObject",
-              "inLanguage": "id",
-              "@id": "$url#primaryimage",
-              "url": urlToImage,
-              "contentUrl": urlToImage,
-              "width": 1024,   // bisa diganti sesuai data asli
-              "height": 649,   // bisa diganti sesuai data asli
-              "caption": penulis != null
-                  ? "Foto oleh $penulis"
-                  : "Gambar terkait artikel"
-            }
-          ]
-        }
-      } : null,
       '_embedded': {
         'author': [{'name': authorString}],
         'wp:featuredmedia': [{'source_url': urlToImage ?? ''}],
-        'wp:term': [[{'name': category, 'taxonomy': 'category'}]]
+        'wp:term': [
+          [{'name': category, 'taxonomy': 'category'}],
+          if (tags.isNotEmpty) 
+            List.generate(tags.length, (index) {
+              return {
+                'id': index < tagIds.length ? tagIds[index] : 0,
+                'name': tags[index],
+                'taxonomy': 'post_tag'
+              };
+            })
+        ]
       }
     };
   }
 
    factory Article.fromJson(Map<String, dynamic> json) {
     return Article.fromWordPress(json);
+  }
+
+  // --- LOGIC FILTER UTAMA ---
+  bool get isImportantNews {
+    if (tagIds.isEmpty) return false;
+    return tagIds.any((id) => importantTagIds.contains(id));
+  }
+
+  // --- LOGIC FILTER HEADLINE ---
+  // ID: 109
+  bool get isHeadline {
+    return tagIds.contains(headlineTagId);
+  }
+
+  // --- LOGIC FILTER BERITA PILIHAN (Editorial) ---
+  // ID: 113
+  bool get isBeritaPilihan {
+    return tagIds.contains(beritaPilihanTagId);
   }
 
   @override
@@ -246,7 +277,7 @@ class Article {
     if (author == null || author!.isEmpty || author == 'Unknown Author') {
       return [];
     }
-    final names = author!.split(RegExp(r',|/')).map((name) => name.trim()).where((n) => n.isNotEmpty).toList();
+    final names = author!.split(' / ').map((name) => name.trim()).where((n) => n.isNotEmpty).toList();
     return names.map((name) {
       final slug = name.toLowerCase()
           .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')

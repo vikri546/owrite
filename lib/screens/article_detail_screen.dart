@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'dart:convert';
 import 'dart:typed_data';
-import 'dart:math'; // <-- BARU: Diperlukan untuk Random
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -17,22 +17,21 @@ import 'package:html/parser.dart' show parse;
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-// import 'package:flutter_tts/flutter_tts.dart'; // <-- HAPUS
-import 'package:flutter/services.dart'; // Import untuk SystemUiOverlayStyle
+import 'package:flutter/services.dart';
 
 // --- Impor flutter_html ---
 import 'package:flutter_html/flutter_html.dart';
-import 'package:flutter_html_video/flutter_html_video.dart'; // Untuk embed video
+import 'package:flutter_html_video/flutter_html_video.dart';
 // --- Akhir Impor ---
 
 import '../services/api_service.dart';
 import '../models/article.dart';
 import '../services/history_service.dart';
 import '../main.dart';
-import '../utils/auth_service.dart'; // Import AuthService
+import '../utils/auth_service.dart';
 import '../services/audio_player_service.dart';
-import '../widgets/snackbar_toggle.dart'; // <-- BARU: Impor snackbar kustom
-import 'login_screen.dart'; // Import LoginScreen
+import '../widgets/snackbar_toggle.dart';
+import 'login_screen.dart';
 import 'quick_screen.dart';
 import 'in_app_browser_screen.dart';
 
@@ -54,9 +53,6 @@ class ArticleDetailScreen extends StatefulWidget {
   State<ArticleDetailScreen> createState() => _ArticleDetailScreenState();
 }
 
-// HAPUS: Enum untuk ukuran font
-// enum FontSize { small, medium, big }
-
 class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     with TickerProviderStateMixin {
   final String _geminiApiKey = dotenv.env['GOOGLE_TTS_API_KEY'] ?? '';
@@ -67,39 +63,26 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
   late Animation<double> _fadeInAnimation;
   late Animation<Offset> _slideAnimation;
 
-  // --- BARU: Variabel untuk animasi header ---
   late AnimationController _headerAnimController;
   late AnimationController _bottomBarAnimController;
-  // late Animation<Offset> _headerSlideAnimation; // <-- MODIFIKASI: Dihapus
   double _lastScrollOffset = 0.0;
   bool _isHeaderVisible = true;
   bool _isBottomBarVisible = true;
-  // --- AKHIR BARU ---
 
   final HistoryService _historyService = HistoryService();
   final AuthService _authService = AuthService();
   bool _isLoggedIn = false;
 
-  // --- HAPUS Variabel FlutterTts ---
-  // late FlutterTts _flutterTts;
-  // bool _isTtsInitialized = false;
-  // --- AKHIR HAPUS ---
-
   AudioPlayerService get _audioService => AudioPlayerService.instance;
   AudioPlayer get _audioPlayer => _audioService.player;
 
-  // --- BARU: State untuk Topik Terkait ---
   List<Article> _relatedArticles = [];
   bool _isLoadingRelated = true;
   String? _relatedError;
-  // --- AKHIR BARU ---
 
-  // --- BARU: Variabel untuk loading swipe ---
   bool _isSwiping = false;
-  // --- AKHIR BARU ---
 
   void _navigateToQuickScreen() async {
-    // Hentikan TTS jika sedang berjalan
     if (_isSpeaking || _isLoading) {
       await _stopSpeaking();
     }
@@ -115,32 +98,24 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
           },
           initialArticle: widget.article,
           hideFullPageButton: true,
-          blockScroll: true, // >>> TAMBAHKAN INI >>>
+          blockScroll: true,
         ),
       ),
     );
   }
 
-  // Fungsi untuk navigasi ke Quick Screen asli (halaman Quick normal)
   void _navigateToQuickScreenOriginal() async {
-    // Hentikan TTS jika sedang berjalan
     if (_isSpeaking || _isLoading) {
       await _stopSpeaking();
     }
 
-    // >>> MODIFIKASI: Gunakan Navigator.push (bukan popUntil) >>>
-    // Ini akan membuat Quick Screen ditambahkan ke stack navigasi
-    // Sehingga saat back, akan kembali ke Article Detail
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => QuickScreen(
-          bookmarkedArticles: [], // List bookmark kosong atau bisa di-pass dari widget
+          bookmarkedArticles: [],
           onBookmarkToggle: (article) {
-            // Handle bookmark toggle jika diperlukan
-            // Bisa kosongkan atau sesuaikan dengan kebutuhan
+            // Handle toggle
           },
-          // >>> TIDAK ADA initialArticle, hideFullPageButton, dan blockScroll >>>
-          // Ini akan membuat Quick Screen berjalan normal seperti di MainScreen
         ),
       ),
     );
@@ -164,40 +139,21 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
         .animate(
             CurvedAnimation(parent: _slideController, curve: Curves.decelerate));
 
-    // --- BARU: Inisialisasi animasi header ---
     _headerAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
-    /* <-- MODIFIKASI: Dihapus
-    _headerSlideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(0, -1), // Slide ke atas untuk sembunyi
-    ).animate(CurvedAnimation(
-      parent: _headerAnimController,
-      curve: Curves.fastOutSlowIn,
-    ));
-    */
-    _headerAnimController.value = 0.0; // Mulai dengan header terlihat
-    // --- AKHIR BARU ---
+    _headerAnimController.value = 0.0;
+    
     _bottomBarAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
     _bottomBarAnimController.value = 0.0;
 
-    // PERBAIKAN: Setup listener dengan cleanup otomatis
     _setupAudioPlayerListener();
-
-    // _initializeFlutterTts(); // <-- HAPUS
-
-    // --- BARU: Tambahkan listener ke scroll controller ---
     _scrollController.addListener(_scrollListener);
-    // --- AKHIR BARU ---
-
-    // --- BARU: Panggil fungsi untuk fetch data terkait ---
     _fetchRelatedArticles();
-    // --- AKHIR BARU ---
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fadeController.forward();
@@ -205,46 +161,48 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     });
   }
 
-  // TAMBAHKAN method baru ini
+  // --- PERBAIKAN UTAMA ADA DI SINI ---
   void _setupAudioPlayerListener() {
-    // Remove listener lama jika ada (penting untuk hot restart)
     debugPrint("🎧 Setting up audio player listener");
     
+    // 1. Listen State Changed (Play/Pause/Stop)
     _audioPlayer.onPlayerStateChanged.listen((state) {
       debugPrint("AudioPlayer state: $state");
-      if (state == PlayerState.completed || state == PlayerState.stopped) {
+      // Hanya handle stop manual atau error di sini
+      if (state == PlayerState.stopped) {
         if (mounted) {
           setState(() {
             _isSpeaking = false;
             _isLoading = false;
-            // _isPaused = false; // <-- HAPUS
-            // _currentTtsMode = ""; // <-- HAPUS
           });
         }
       }
     });
+
+    // 2. Listen Player Complete (Otomatis berhenti saat audio habis)
+    // Event ini lebih akurat untuk mendeteksi akhir pembacaan
+    _audioPlayer.onPlayerComplete.listen((event) {
+      debugPrint("✅ Audio finished playing automatically");
+      if (mounted) {
+        setState(() {
+          _isSpeaking = false;
+          _isLoading = false;
+        });
+      }
+    });
   }
 
-  // TAMBAHKAN method ini untuk hot restart
   @override
   void reassemble() {
     super.reassemble();
     debugPrint("🔥 Hot restart detected - resetting audio");
-    
-    // Force reset audio player
     AudioPlayerService.forceReset();
-    
-    // Reset state
     if (mounted) {
       setState(() {
         _isSpeaking = false;
         _isLoading = false;
-        // _isPaused = false; // <-- HAPUS
-        // _currentTtsMode = ""; // <-- HAPUS
       });
     }
-    
-    // Setup listener lagi
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) {
         _setupAudioPlayerListener();
@@ -252,16 +210,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     });
   }
 
-  // --- BARU: Scroll Listener untuk Header ---
   void _scrollListener() {
     final currentOffset = _scrollController.offset;
     final direction = currentOffset - _lastScrollOffset;
 
-    // Jangan lakukan apa-apa jika scroll kecil (debounce) atau di paling atas
     if (direction.abs() < 10 || currentOffset < 0) return;
 
     if (direction > 0 && currentOffset > kToolbarHeight) {
-      // Scrolling Down -> Hide both header and bottom bar
       if (_isHeaderVisible) {
         _headerAnimController.forward();
         if (mounted) {
@@ -279,7 +234,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
         }
       }
     } else if (direction < 0) {
-      // Scrolling Up -> Show both header and bottom bar
       if (!_isHeaderVisible) {
         _headerAnimController.reverse();
         if (mounted) {
@@ -300,61 +254,27 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
 
     _lastScrollOffset = currentOffset.clamp(0, _scrollController.position.maxScrollExtent);
   }
-  // --- AKHIR BARU ---
 
   @override
   void dispose() {
     debugPrint("🗑️ Disposing ArticleDetailScreen");
-    
-    // --- BARU: Hapus listener dan dispose controller ---
     _scrollController.removeListener(_scrollListener);
     _headerAnimController.dispose();
     _bottomBarAnimController.dispose();
-    // --- AKHIR BARU ---
-
     _scrollController.dispose();
     _fadeController.dispose();
     _slideController.dispose();
-    
-    // --- HAPUS Pengecekan FlutterTts ---
-    // if (_isTtsInitialized) {
-    //    _flutterTts.stop();
-    // }
-    // --- AKHIR HAPUS ---
-    
-    // GANTI dengan service reset
     _audioService.reset();
-    
     super.dispose();
   }
 
   bool _isSpeaking = false;
   bool _isLoading = false;
-  // bool _isPaused = false; // <-- HAPUS
   String _fullTextForSpeech = "";
-
-  // --- HAPUS Variabel Word Highlight ---
-  // int _currentWordStart = -1;
-  // int _currentWordEnd = -1;
-  // final GlobalKey _richTextKey = GlobalKey();
-  // --- AKHIR HAPUS ---
-
-  // String _currentTtsMode = ""; // <-- HAPUS
   late bool _isBookmarkedLocal;
 
-  // --- MODIFIKASI: State untuk ukuran font ---
-  // HAPUS: State untuk ukuran font
-  // FontSize _currentFontSize = FontSize.medium;
-  // final Map<FontSize, double> _fontSizeMap = {
-  //   FontSize.small: 15.0,
-  //   FontSize.medium: 18.0,
-  //   FontSize.big: 21.0,
-  // };
-  
-  // BARU: State untuk 5 ukuran font
   final List<double> _fontSizes = [14.0, 16.0, 18.0, 20.0, 22.0];
-  int _currentFontSizeIndex = 2; // Default ke index 2 (18.0)
-  // --- AKHIR MODIFIKASI ---
+  int _currentFontSizeIndex = 2;
 
   Future<void> _checkLoginStatus() async {
     final user = await _authService.getCurrentUser();
@@ -368,67 +288,27 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
   Future<void> _addToHistory() async {
     try {
       await _historyService.addToHistory(widget.article);
-      debugPrint('Article added to history: ${widget.article.title}');
     } catch (e) {
       debugPrint('Error adding to history: $e');
     }
   }
 
-  // --- FUNGSI BARU UNTUK MEMETAKAN KODE BAHASA ---
-  /// Memetakan kode bahasa ISO 639-1 (misal "id") ke locale BCP 47 (misal "id-ID")
-  /// Ini memberikan petunjuk yang lebih baik untuk engine TTS.
   String _getTtsLocale(String? articleLanguage) {
     if (articleLanguage == null || articleLanguage.isEmpty) {
-      return 'id-ID'; // Default ke Indonesia jika tidak ada info
+      return 'id-ID';
     }
-
     final Map<String, String> commonLocales = {
-      'id': 'id-ID', // Indonesia
-      'en': 'en-US', // Inggris (US)
-      'es': 'es-ES', // Spanyol (Spanyol)
-      'fr': 'fr-FR', // Perancis (Perancis)
-      'de': 'de-DE', // Jerman (Jerman)
-      'ja': 'ja-JP', // Jepang
-      'ko': 'ko-KR', // Korea
-      'zh': 'zh-CN', // Mandarin (China)
-      'ru': 'ru-RU', // Rusia
-      'ar': 'ar-SA', // Arab (Saudi)
-      'pt': 'pt-BR', // Portugis (Brazil)
-      'it': 'it-IT', // Italia
-      'nl': 'nl-NL', // Belanda
-      'tr': 'tr-TR', // Turki
-      'vi': 'vi-VN', // Vietnam
-      'th': 'th-TH', // Thailand
-      'hi': 'hi-IN', // Hindi
-      'sv': 'sv-SE', // Swedia
-      'pl': 'pl-PL', // Polandia
-      'el': 'el-GR', // Yunani
+      'id': 'id-ID', 'en': 'en-US', 'es': 'es-ES', 'fr': 'fr-FR',
+      'de': 'de-DE', 'ja': 'ja-JP', 'ko': 'ko-KR', 'zh': 'zh-CN',
+      'ru': 'ru-RU', 'ar': 'ar-SA', 'pt': 'pt-BR', 'it': 'it-IT',
+      'nl': 'nl-NL', 'tr': 'tr-TR', 'vi': 'vi-VN', 'th': 'th-TH',
     };
-
-    // 1. Cek apakah kode bahasa (misal "en") ada di peta umum
-    if (commonLocales.containsKey(articleLanguage)) {
-      return commonLocales[articleLanguage]!;
-    }
-
-    // 2. Cek apakah kodenya sudah merupakan locale (misal "en-GB")
-    if (articleLanguage.contains('-') || articleLanguage.contains('_')) {
-      return articleLanguage;
-    }
-
-    // 3. Jika hanya 2 huruf (misal "uk" untuk Ukraina), coba gunakan itu secara langsung
-    if (articleLanguage.length == 2) {
-      return articleLanguage;
-    }
-
-    // 4. Fallback default
+    if (commonLocales.containsKey(articleLanguage)) return commonLocales[articleLanguage]!;
+    if (articleLanguage.contains('-') || articleLanguage.contains('_')) return articleLanguage;
+    if (articleLanguage.length == 2) return articleLanguage;
     return 'id-ID';
   }
 
-  // --- HAPUS SELURUH FUNGSI _initializeFlutterTts ---
-  // Future<void> _initializeFlutterTts() async { ... }
-  // --- AKHIR HAPUS ---
-
-  // --- BARU: Fungsi untuk mengambil artikel terkait ---
   Future<void> _fetchRelatedArticles() async {
     if (!mounted) return;
     setState(() {
@@ -437,18 +317,15 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     });
 
     try {
-      // Ambil artikel dari kategori yang sama
-      // Minta 5 artikel, untuk difilter 1 (jika artikel saat ini muncul) dan diambil 4
       final articles = await _apiService.getArticlesByCategory(
         widget.article.category,
         page: 1,
-        pageSize: 5, // Ambil 5 untuk jaga-jaga
+        pageSize: 5,
       );
 
-      // Filter artikel saat ini dari daftar, lalu ambil 4 sisanya
       final related = articles
           .where((a) => a.id != widget.article.id)
-          .take(4) // Ambil 4 artikel
+          .take(4)
           .toList();
 
       if (!mounted) return;
@@ -461,20 +338,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       setState(() {
         _isLoadingRelated = false;
         _relatedError = "Gagal memuat topik terkait.";
-        debugPrint("Error fetching related articles: $e");
       });
     }
   }
-  // --- AKHIR BARU ---
 
-
-  // --- BARU: Method untuk fetch artikel random ---
   Future<void> _fetchAndNavigateToRandomArticle() async {
-    if (_isSwiping) return; // Jangan swipe jika sedang memuat
-
-    // Hanya jalankan di mobile
+    if (_isSwiping) return;
     if (kIsWeb) return;
-    // Platform.isAndroid || Platform.isIOS
     if (!Platform.isAndroid && !Platform.isIOS) return;
 
     if (mounted) {
@@ -483,7 +353,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       });
     }
 
-    // Tampilkan overlay loading sederhana
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -493,86 +362,60 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
             Text("Mencari artikel lain..."),
           ],
         ),
-        duration: const Duration(seconds: 10), // Durasi panjang, akan ditutup manual
+        duration: const Duration(seconds: 10),
       ),
     );
 
     try {
-      // Ambil 50 artikel terbaru dari kategori APAPUN (null)
-      // Ambil dari halaman random antara 1-3
       final randomPage = Random().nextInt(3) + 1;
       final articles = await _apiService.getArticlesByCategory(
-        null, // Kategori apapun
+        null,
         page: randomPage,
         pageSize: 50,
       );
 
-      // Filter artikel saat ini
       final otherArticles = articles.where((a) => a.id != widget.article.id).toList();
 
       if (otherArticles.isEmpty) {
         throw Exception("Tidak menemukan artikel lain.");
       }
 
-      // Ambil satu secara acak
       final randomArticle = otherArticles[Random().nextInt(otherArticles.length)];
       final String heroTag = 'swipe_${randomArticle.id}_${UniqueKey().toString()}';
 
-      // Hentikan TTS jika sedang berjalan
       if (_isSpeaking || _isLoading) {
         await _stopSpeaking();
       }
 
-      // Tutup snackbar loading
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-      // Navigasi GANTI layar saat ini
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => ArticleDetailScreen(
             article: randomArticle,
             heroTag: heroTag,
-            // Asumsikan artikel baru belum di-bookmark
             isBookmarked: false, 
-            // Teruskan callback bookmark
             onBookmarkToggle: widget.onBookmarkToggle, 
           ),
         ),
       );
 
     } catch (e) {
-      debugPrint("Error swiping to random article: $e");
-      // Tutup snackbar loading
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      // Tampilkan error
-      if (mounted) {
-        _showErrorSnackBar("Gagal memuat artikel lain.");
-      }
-      if (mounted) {
-        setState(() {
-          _isSwiping = false;
-        });
-      }
+      if (mounted) _showErrorSnackBar("Gagal memuat artikel lain.");
+      if (mounted) setState(() => _isSwiping = false);
     }
   }
-  // --- AKHIR BARU ---
 
-  // --- BARU: Handler untuk gesture swipe ---
   void _handleHorizontalSwipe(DragEndDetails details) {
-    // Hanya di mobile
     if (kIsWeb) return;
     if (!Platform.isAndroid && !Platform.isIOS) return;
-
-    // Cek velocity
     final double velocity = details.primaryVelocity ?? 0;
-
-    // Swipe ke kiri (velocity < 0) atau kanan (velocity > 0)
-    if (velocity.abs() > 300) { // Butuh swipe yang cukup kencang
+    if (velocity.abs() > 300) {
       _fetchAndNavigateToRandomArticle();
     }
   }
-  // --- AKHIR BARU ---
 
   void _popWithResult(BuildContext context) {
     final result = {'isBookmarked': _isBookmarkedLocal};
@@ -600,15 +443,74 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     return text != null ? parse(text).documentElement!.text.trim() : '';
   }
 
+  String _processHtmlForTts(String htmlString) {
+    final document = parse(htmlString);
+    final StringBuffer buffer = StringBuffer();
+
+    void _visit(var node) {
+      if (node.nodeType == 3) { // Text Node
+        String text = node.text?.trim() ?? '';
+        if (text.isNotEmpty) buffer.write("$text ");
+      } else if (node.nodeType == 1) { // Element Node
+        final String tagName = node.localName ?? '';
+        
+        if (tagName == 'blockquote') {
+          var citeNode = node.querySelector('cite');
+          for (var child in node.nodes) {
+            if (child != citeNode) {
+              _visit(child);
+            }
+          }
+          if (citeNode != null) {
+            String author = citeNode.text.trim();
+            if (author.isNotEmpty) {
+              buffer.write(". Kata $author. ");
+            }
+          }
+        } else if (tagName == 'br') {
+          buffer.write("\n");
+        } else {
+          for (var child in node.nodes) {
+            _visit(child);
+          }
+          if (['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'ul', 'ol'].contains(tagName)) {
+            buffer.write("\n");
+          }
+        }
+      }
+    }
+
+    if (document.body != null) {
+      for (var node in document.body!.nodes) {
+        _visit(node);
+      }
+    }
+
+    return buffer.toString().trim();
+  }
+
   String _formatDateRelative(DateTime dateTime) {
     try {
-      final Duration difference = DateTime.now().difference(dateTime);
-      if (difference.inDays > 7)
-        return DateFormat('d MMM y', 'id_ID').format(dateTime);
-      if (difference.inDays >= 1) return '${difference.inDays} hari lalu';
-      if (difference.inHours >= 1) return '${difference.inHours} jam lalu';
-      if (difference.inMinutes >= 1) return '${difference.inMinutes} mnt lalu';
-      return 'Baru saja';
+      final now = DateTime.now();
+      final difference = now.difference(dateTime);
+
+      if (difference.inMinutes < 60) {
+         if (difference.inMinutes <= 0) return 'Baru saja';
+         return '${difference.inMinutes} menit lalu';
+      }
+      if (difference.inHours < 24) {
+        return '${difference.inHours} jam lalu';
+      }
+      final yesterday = now.subtract(const Duration(days: 1));
+      if (dateTime.year == yesterday.year && 
+          dateTime.month == yesterday.month && 
+          dateTime.day == yesterday.day) {
+        return 'Kemarin';
+      }
+      if (difference.inDays < 7) {
+        return '${difference.inDays} hari lalu';
+      }
+      return DateFormat('d MMM y', 'id_ID').format(dateTime);
     } catch (e) {
       return DateFormat('d MMM y', 'id_ID').format(dateTime);
     }
@@ -616,7 +518,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
 
   Future<void> _launchURL(String urlString) async {
     try {
-      // Cek apakah berjalan di platform mobile (Android/iOS)
       if (Theme.of(context).platform == TargetPlatform.android ||
           Theme.of(context).platform == TargetPlatform.iOS) {
         Navigator.of(context).push(
@@ -628,47 +529,23 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
           ),
         );
       } else {
-        // Jika tidak di handphone, tampilkan notifikasi/snackbar
-        _showErrorSnackBar(
-          'Fitur ini hanya bisa dibuka di handphone (Android atau iOS).'
-        );
+        _showErrorSnackBar('Fitur ini hanya bisa dibuka di handphone (Android atau iOS).');
       }
     } catch (e) {
       _showErrorSnackBar('Gagal membuka browser:\n$urlString');
     }
   }
 
-  // --- HAPUS FUNGSI MODAL TTS ---
-  // Future<void> _showTtsModeSelection() async { ... }
-  // Widget _buildTtsModeOption({ ... }) { ... }
-  // --- AKHIR HAPUS ---
-
-  // --- PERBAIKAN: Logika _toggleSpeech diubah total ---
   Future<void> _toggleSpeech() async {
-    if (_isLoading) return; // Jangan lakukan apa-apa saat loading
+    if (_isLoading) return; 
 
     if (_isSpeaking) {
-      // --- MODIFIKASI: Jika sedang play, panggil stop ---
       await _stopSpeaking();
     } else {
-      // --- MODIFIKASI: Jika berhenti total, MULAI DARI AWAL ---
       _fullTextForSpeech = _prepareTextForSpeech();
       await _startGeminiTts();
     }
   }
-
-  // --- HAPUS FUNGSI _pauseSpeech ---
-  // Future<void> _pauseSpeech() async { ... }
-  // --- AKHIR HAPUS ---
-
-
-  // --- HAPUS FUNGSI _resumeSpeech ---
-  // Future<void> _resumeSpeech() async { ... }
-  // --- AKHIR HAPUS ---
-
-  // --- HAPUS FUNGSI _startNormalTts ---
-  // Future<void> _startNormalTts() async { ... }
-  // --- AKHIR HAPUS ---
 
   Future<void> _startGeminiTts() async {
     if (_geminiApiKey == "AIzaSyDa3Fo_obfSV_DTUo8OmaSUiR7U7KllYEs" || _geminiApiKey.isEmpty) {
@@ -679,25 +556,16 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
 
     if (!mounted) return;
     setState(() {
-      // _currentTtsMode = "gemini"; // <-- HAPUS
       _isLoading = true;  
-      // _isPaused = false; // <-- HAPUS
     });
 
     await _fetchAndPlayGeminiTts();
   }
 
-  // --- HAPUS FUNGSI _speakWithFlutterTts ---
-  // Future<void> _speakWithFlutterTts() async { ... }
-  // --- AKHIR HAPUS ---
-
-  // GANTI SELURUH FUNGSI _fetchAndPlayGeminiTts DENGAN INI:
   Future<void> _fetchAndPlayGeminiTts() async {
     if (_fullTextForSpeech.isEmpty) {
       _showErrorSnackBar("Tidak ada teks untuk dibacakan");
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
       return;
     }
 
@@ -706,18 +574,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     if (apiKey == null || apiKey.isEmpty) {
       _showDetailedErrorDialog("API Key Belum Dikonfigurasi",
           "Gunakan 'Suara Normal' untuk saat ini.");
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
       return;
     }
 
-    // Gunakan endpoint v1 (production-ready)
     final String apiUrl = "https://texttospeech.googleapis.com/v1/text:synthesize";
 
-    // Untuk Gemini TTS, gunakan voice name dengan format: {languageCode}-{voiceType}-{variant}
-    // Contoh: id-ID-Neural2-A, en-US-Neural2-C
-    // Pilih suara secara acak dari daftar 3 karakter
     final voiceCharacters = [
       "id-ID-Chirp3-HD-Zephyr",
       "id-ID-Chirp3-HD-Charon",
@@ -734,24 +596,10 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       },
       "audioConfig": {
         "audioEncoding": "MP3",
-        "speakingRate": 1.04,      // Sedikit lebih cepat dari default (1.0) agar terdengar lebih natural
-        // "pitch": -1.0, // Voice does not support pitch, so we remove it
-        "volumeGainDb": 0.5        // Sedikit meningkatkan volume agar lebih terdengar
+        "speakingRate": 1.04, 
+        "volumeGainDb": 0.5 
       }
     });
-    // final payload = jsonEncode({
-    //  "input": { "text": _fullTextForSpeech },
-    //  "voice": {
-    //    "languageCode": "id-ID",
-    //    "name": "Leda",        // 🔑 gunakan nama voice dari Gemini TTS
-    //    "modelName": "gemini-2.5-pro-tts" // atau "gemini-2.5-flash-tts"
-    //  },
-    //  "audioConfig": {
-    //    "audioEncoding": "MP3",
-    //    "speakingRate": 1.0,
-    //    "pitch": 0.0
-    //  }
-    // });
 
     if (!mounted) return;
     setState(() {
@@ -760,8 +608,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
 
     try {
       debugPrint("Mengirim request ke Cloud TTS API (Gemini)...");
-      debugPrint("URL: $apiUrl?key=***");
-
+      
       final response = await http
           .post(
             Uri.parse("$apiUrl?key=$apiKey"),
@@ -782,23 +629,18 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
           debugPrint("Audio MP3 diterima, ukuran: ${audioData.length} bytes (base64)");
           
           final audioBytes = base64Decode(audioData);
-          debugPrint("Audio decoded, ukuran: ${audioBytes.length} bytes");
-
           await _audioPlayer.play(BytesSource(audioBytes));
 
           if (mounted) {
             setState(() {
               _isLoading = false;
               _isSpeaking = true;
-              // _isPaused = false; // <-- HAPUS
             });
           }
         } else {
           throw Exception("Tidak ada data audio dalam respons");
         }
       } else {
-        debugPrint("Error ${response.statusCode}: ${response.body}");
-        
         String errorMessage = "Error tidak diketahui";
         try {
           final errorBody = jsonDecode(response.body);
@@ -806,7 +648,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
         } catch (e) {
           errorMessage = response.body;
         }
-        
         throw Exception("HTTP ${response.statusCode}: $errorMessage");
       }
     } on TimeoutException {
@@ -815,8 +656,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
         setState(() {  
           _isLoading = false;  
           _isSpeaking = false;  
-          // _isPaused = false; // <-- HAPUS
-          // _currentTtsMode = ""; // <-- HAPUS  
         });
       }
     } catch (e) {
@@ -826,63 +665,243 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
         setState(() {  
           _isLoading = false;  
           _isSpeaking = false;  
-          // _isPaused = false; // <-- HAPUS
-          // _currentTtsMode = ""; // <-- HAPUS  
         });
       }
     }
   }
 
-  // --- PERUBAHAN DI SINI ---
   Future<void> _stopSpeaking() async {
     try {
-      // --- HAPUS Pengecekan Mode ---
-      // if (_currentTtsMode == "normal") {
-      //    await _flutterTts.stop();
-      // } else if (_currentTtsMode == "gemini") {
-      //    await _audioPlayer.stop();
-      // }
       await _audioPlayer.stop();
-      // --- AKHIR HAPUS ---
-
-      // BLOK INI DIHAPUS:
-      // State akan di-reset oleh listener (onPlayerStateChanged untuk gemini)
-      // atau cancel handler (setCancelHandler untuk normal) secara otomatis.
-      // --- PERBAIKAN: Tetap lakukan reset manual untuk memastikan ---
       if (mounted) {
         setState(() {
           _isSpeaking = false;
           _isLoading = false;
-          // _isPaused = false; // <-- HAPUS
-          // _currentTtsMode = ""; // <-- HAPUS
-          // _currentWordStart = -1; // <-- HAPUS
-          // _currentWordEnd = -1; // <-- HAPUS
         });
       }
     } catch (e) {
       debugPrint("Error stopping TTS: $e");
-      // Biarkan reset state di blok catch, ini untuk keamanan jika stop() gagal
       if (mounted) {
         setState(() {
           _isSpeaking = false;
           _isLoading = false;
-          // _isPaused = false; // <-- HAPUS
-          // _currentTtsMode = ""; // <-- HAPUS
-          // _currentWordStart = -1; // <-- HAPUS
-          // _currentWordEnd = -1; // <-- HAPUS
         });
       }
     }
   }
-  // --- AKHIR PERUBAHAN ---
 
-  // --- HAPUS FUNGSI _scrollTo ---
-  // void _scrollTo(int startOffset) { ... }
-  // --- AKHIR HAPUS ---
+  // --- BARU: Fungsi Normalisasi Teks Asing (Mata Uang & Istilah) ---
+  /// Mengubah simbol atau format asing menjadi teks bahasa Indonesia
+  /// agar TTS Gemini bisa membacanya dengan natural.
+  /// Termasuk mengubah tanda strip pada nominal menjadi 'sampai' (misal: Rp 63 - 64 Miliar -> 63 sampai 64 Miliar rupiah)
+  /// Angka dengan koma akan diubah jadi "koma", misal: 3,9 -> "3 koma 9"
+  /// Juga mengubah 21,9 persen => 21 koma 9 persen dan 3,4 jam => 3 koma 4 jam, dll.
+  String _normalizeForeignTerms(String input) {
+    String text = input;
+
+    String normalizeNumber(String? num) {
+      if (num == null) return '';
+      // Tangani angka dengan koma (desimal)
+      // Hilangkan titik pemisah ribuan
+      String cleaned = num.replaceAll('.', '');
+      if (cleaned.contains(',')) {
+        var parts = cleaned.split(',');
+        // Misal: 3,9 -> 3 koma 9; 12,53 -> 12 koma 53
+        return '${parts[0]} koma ${parts[1]}';
+      }
+      return cleaned;
+    }
+
+    // 0. Range/mata uang besar (Miliar dst) --- GUNAKAN FUNGSI normalizeNumber
+    text = text.replaceAllMapped(
+      RegExp(r'(?:US)?\$\s*([\d\.,]+)\s*-\s*([\d\.,]+)\s+(Miliar|Juta|Triliun|Biliun)', caseSensitive: false),
+      (match) {
+        final num1 = normalizeNumber(match.group(1));
+        final num2 = normalizeNumber(match.group(2));
+        return "$num1 sampai $num2 ${match.group(3)} dolar Amerika";
+      },
+    );
+    text = text.replaceAllMapped(
+      RegExp(r'Rp\.?\s*([\d\.,]+)\s*-\s*([\d\.,]+)\s+(Miliar|Juta|Triliun|Biliun)', caseSensitive: false),
+      (match) {
+        final num1 = normalizeNumber(match.group(1));
+        final num2 = normalizeNumber(match.group(2));
+        return "$num1 sampai $num2 ${match.group(3)} rupiah";
+      },
+    );
+
+    // 0.1 Versi tanpa satuan besar, misal: Rp 1.000 - 2.000
+    text = text.replaceAllMapped(
+      RegExp(r'Rp\.?\s*([\d\.,]+)\s*-\s*([\d\.,]+)', caseSensitive: false),
+      (match) {
+        final num1 = normalizeNumber(match.group(1));
+        final num2 = normalizeNumber(match.group(2));
+        return "$num1 sampai $num2 rupiah";
+      },
+    );
+    text = text.replaceAllMapped(
+      RegExp(r'(?:US)?\$\s*([\d\.,]+)\s*-\s*([\d\.,]+)', caseSensitive: false),
+      (match) {
+        final num1 = normalizeNumber(match.group(1));
+        final num2 = normalizeNumber(match.group(2));
+        return "$num1 sampai $num2 dolar Amerika";
+      },
+    );
+    // Euro range
+    text = text.replaceAllMapped(
+      RegExp(r'€\s*([\d\.,]+)\s*-\s*([\d\.,]+)', caseSensitive: false),
+      (match) {
+        final num1 = normalizeNumber(match.group(1));
+        final num2 = normalizeNumber(match.group(2));
+        return "$num1 sampai $num2 Euro";
+      },
+    );
+    // Poundsterling range
+    text = text.replaceAllMapped(
+      RegExp(r'£\s*([\d\.,]+)\s*-\s*([\d\.,]+)', caseSensitive: false),
+      (match) {
+        final num1 = normalizeNumber(match.group(1));
+        final num2 = normalizeNumber(match.group(2));
+        return "$num1 sampai $num2 Poundsterling";
+      },
+    );
+    // Yen/Yuan range
+    text = text.replaceAllMapped(
+      RegExp(r'¥\s*([\d\.,]+)\s*-\s*([\d\.,]+)', caseSensitive: false),
+      (match) {
+        final num1 = normalizeNumber(match.group(1));
+        final num2 = normalizeNumber(match.group(2));
+        return "$num1 sampai $num2 Yen";
+      },
+    );
+    // USD kode rentang
+    text = text.replaceAllMapped(
+      RegExp(r'USD\s*([\d\.,]+)\s*-\s*([\d\.,]+)\s+(Miliar|Juta|Triliun|Biliun)', caseSensitive: false),
+      (match) {
+        final num1 = normalizeNumber(match.group(1));
+        final num2 = normalizeNumber(match.group(2));
+        return "$num1 sampai $num2 ${match.group(3)} dolar Amerika";
+      },
+    );
+    text = text.replaceAllMapped(
+      RegExp(r'USD\s*([\d\.,]+)\s*-\s*([\d\.,]+)', caseSensitive: false),
+      (match) {
+        final num1 = normalizeNumber(match.group(1));
+        final num2 = normalizeNumber(match.group(2));
+        return "$num1 sampai $num2 dolar Amerika";
+      },
+    );
+
+    // 1. [PRIORITAS TINGGI] Mata Uang dengan Satuan Besar (Miliar, Juta, Triliun)
+    // Dollar + Satuan Besar
+    text = text.replaceAllMapped(
+      RegExp(r'(?:US)?\$\s*([\d\.,]+)\s+(Miliar|Juta|Triliun|Biliun)', caseSensitive: false),
+      (match) {
+        final num = normalizeNumber(match.group(1));
+        return "$num ${match.group(2)} dolar Amerika";
+      }
+    );
+    // Rupiah + Satuan Besar
+    text = text.replaceAllMapped(
+      RegExp(r'Rp\.?\s*([\d\.,]+)\s+(Miliar|Juta|Triliun|Biliun)', caseSensitive: false),
+      (match) {
+        final num = normalizeNumber(match.group(1));
+        return "$num ${match.group(2)} rupiah";
+      }
+    );
+
+    // 2. Mata Uang Dollar Biasa ($) - angka dengan koma akan dibaca "koma"
+    text = text.replaceAllMapped(
+      RegExp(r'(?:US)?\$\s*([\d\.,]+)', caseSensitive: false),
+      (match) {
+        String number = match.group(1)!;
+        // Jika angka diakhiri titik/koma (misal akhir kalimat), bersihkan
+        if (number.endsWith('.') || number.endsWith(',')) {
+          number = number.substring(0, number.length - 1);
+        }
+        number = normalizeNumber(number);
+        return "$number dolar Amerika";
+      },
+    );
+
+    // 3. Kode Mata Uang USD
+    text = text.replaceAllMapped(
+      RegExp(r'\bUSD\s*([\d\.,]+)', caseSensitive: false),
+      (match) {
+        final num = normalizeNumber(match.group(1));
+        return "$num dolar Amerika";
+      },
+    );
+
+    // 4. Simbol Mata Uang Lain
+    text = text.replaceAllMapped(
+      RegExp(r'€\s*([\d\.,]+)'),
+      (match) {
+        final num = normalizeNumber(match.group(1));
+        return "$num Euro";
+      },
+    );
+    text = text.replaceAllMapped(
+      RegExp(r'£\s*([\d\.,]+)'),
+      (match) {
+        final num = normalizeNumber(match.group(1));
+        return "$num Poundsterling";
+      },
+    );
+    text = text.replaceAllMapped(
+      RegExp(r'¥\s*([\d\.,]+)'),
+      (match) {
+        final num = normalizeNumber(match.group(1));
+        return "$num Yen";
+      },
+    );
+
+    // 5. Mata Uang Rupiah Biasa (Opsional, merapikan format)
+    text = text.replaceAllMapped(
+      RegExp(r'Rp\.?\s*([\d\.,]+)', caseSensitive: false),
+      (match) {
+        final num = normalizeNumber(match.group(1));
+        return "$num rupiah";
+      },
+    );
+
+    // 6. Persen/kata satuan lain: angka dengan koma sebelum 'persen', 'jam', 'hari', 'tahun', 'bulan', dll
+    // Contoh: 21,9 persen -> 21 koma 9 persen; 3,4 jam -> 3 koma 4 jam
+    // Note: lakukan setelah currency agar tidak bentrok string di atas!
+    text = text.replaceAllMapped(
+      RegExp(r'(\d{1,3}(?:\.\d{3})*),(\d+)\s*(persen|jam|hari|tahun|bulan|menit|detik|minggu)', caseSensitive: false),
+      (match) {
+        String whole = match.group(1)!;
+        String frac = match.group(2)!;
+        String satuan = match.group(3)!;
+        // Hilangkan titik di whole
+        whole = whole.replaceAll('.', '');
+        return '$whole koma $frac $satuan';
+      }
+    );
+
+    // 6.1 Standalone angka dengan koma, misal: "3,4" tanpa satuan
+    // Hati-hati jangan replace angka dalam konteks lain, pastikan bukan di tengah kata, gunakan \b
+    text = text.replaceAllMapped(
+      RegExp(r'\b(\d{1,3}(?:\.\d{3})*),(\d+)\b', caseSensitive: false),
+      (match) {
+        String whole = match.group(1)!;
+        String frac = match.group(2)!;
+        whole = whole.replaceAll('.', '');
+        return '$whole koma $frac';
+      }
+    );
+
+    // 7. Istilah Asing Umum dalam Berita (Contoh)
+    text = text.replaceAll(RegExp(r'\bvs\b', caseSensitive: false), "melawan");
+    text = text.replaceAll(RegExp(r'\bapprox\.\b', caseSensitive: false), "kira-kira");
+
+    return text;
+  }
+  // --- AKHIR FUNGSI BARU ---
 
   String _prepareTextForSpeech() {
     StringBuffer buffer = StringBuffer();
-    // Set default locale untuk pemformatan, tapi TTS akan menggunakan bahasanya sendiri
     Intl.defaultLocale = 'id_ID';
 
     buffer.writeln(widget.article.title);
@@ -901,50 +920,46 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     if (hasPenulis) buffer.write("Penulis $penulisString. ");
     if (hasAuthor || hasPenulis) buffer.writeln();
 
-    // -- PERUBAHAN: Jangan paksakan format tanggal 'WIB' jika artikel internasional --
-    // Gunakan format yang lebih netral jika bahasa bukan 'id'
-    /* KODE YANG DIHAPUS KARENA ERROR
-    final bool isIndonesian = (widget.article.language ?? 'id') == 'id';
+    final dt = widget.article.modifiedAt;
     
-    final DateFormat updateDateFormat = isIndonesian
-        ? DateFormat('MMMM d, yyyy, h:mm a', 'id_ID')
-        : DateFormat('MMMM d, yyyy, h:mm a', 'en_US'); // Fallback ke format EN
+    final day = dt.day;
+    final month = DateFormat('MMMM', 'id_ID').format(dt); 
+    final year = dt.year;
 
-    String updateString = "Update ${updateDateFormat.format(widget.article.modifiedAt)}";
-    if (isIndonesian) updateString += " WIB";
-    */ // --- AKHIR KODE YANG DIHAPUS ---
+    final hour = dt.hour;
+    final minute = dt.minute.toString().padLeft(2, '0');
 
-    // --- KODE BARU (MENGEMBALIKAN KE LOGIKA AWAL) ---
-    final DateFormat updateDateFormat = DateFormat('MMMM d, yyyy, h:mm a');
-    final String updateString =
-        "Update ${updateDateFormat.format(widget.article.modifiedAt)} WIB";
-    // --- AKHIR KODE BARU ---
+    String period = '';
+    if (hour >= 0 && hour < 11) {
+      period = 'pagi';
+    } else if (hour >= 11 && hour < 15) {
+      period = 'siang';
+    } else if (hour >= 15 && hour < 18) {
+      period = 'sore';
+    } else {
+      period = 'malam';
+    }
+
+    final String updateString = 
+        "Update tanggal $day bulan $month tahun $year, jam $hour:$minute $period Waktu Indonesia Barat";
 
     buffer.writeln(updateString);
     buffer.writeln();
 
     String? content = widget.article.content ?? widget.article.description;
     if (content != null && content.isNotEmpty) {
-      String cleanContent = _stripHtml(content);
+      String cleanContent = _processHtmlForTts(content);
       
-      // Hanya lakukan penggantian spesifik bahasa jika kita yakin ini bahasa Indonesia
-      /* KODE YANG DIHAPUS KARENA ERROR
-      if (isIndonesian) {
-        cleanContent = cleanContent
-            .replaceAll("dll.", "dan lain-lain")
-            .replaceAll("dsb.", "dan sebagainya")
-            .replaceAll("Yth.", "Yang terhormat");
-      }
-      buffer.write(cleanContent);
-      */ // --- AKHIR KODE YANG DIHAPUS ---
-
-      // --- KODE BARU (MENGEMBALIKAN KE LOGIKA AWAL) ---
       cleanContent = cleanContent
           .replaceAll("dll.", "dan lain-lain")
           .replaceAll("dsb.", "dan sebagainya")
           .replaceAll("Yth.", "Yang terhormat");
+
+      // --- MODIFIKASI: Panggil fungsi normalisasi teks asing ---
+      cleanContent = _normalizeForeignTerms(cleanContent);
+      // --- AKHIR MODIFIKASI ---
+      
       buffer.write(cleanContent);
-      // --- AKHIR KODE BARU ---
     } else {
       buffer.write("Konten tidak tersedia.");
     }
@@ -970,32 +985,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
             onPressed: () =>
                 ScaffoldMessenger.of(context).hideCurrentSnackBar())));
   }
-
-  // --- FUNGSI INI DIHAPUS ---
-  /*
-  void _showBookmarkSnackbar(bool isBookmarked) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).removeCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          isBookmarked ? 'Artikel disimpan ke bookmark' : 'Bookmark dihapus',
-          style: TextStyle(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.black
-                  : Colors.white),
-        ),
-        backgroundColor: Theme.of(context).brightness == Brightness.dark
-            ? const Color(0xFFE0E0E0)
-            : const Color(0xFF333333),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.fixed,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-      ),
-    );
-  }
-  */
-  // --- AKHIR FUNGSI YANG DIHAPUS ---
 
   void _showLoginRequiredPanel() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1142,17 +1131,17 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
 
     return WillPopScope(
       onWillPop: () async {
-        // --- MODIFIKASI: Hapus pengecekan _isPaused ---
         if (_isSpeaking || _isLoading) await _stopSpeaking();
         _popWithResult(context);
         return false;
       },
       child: Scaffold(
-        backgroundColor: isDark ? Colors.black : Colors.white,
+        backgroundColor: isDark ? Color(0xFF1A1A1A) : Color(0xFFF5F5F5),
         appBar: AppBar(
           toolbarHeight: 0,
           elevation: 0,
-          backgroundColor: isDark ? Colors.black : Colors.white,
+          backgroundColor: isDark ? Color(0xFF1A1A1A) : Color(0xFFF5F5F5),
+          surfaceTintColor: Colors.transparent,
           systemOverlayStyle: SystemUiOverlayStyle(
             statusBarColor: isDark ? Colors.black : Colors.white,
             statusBarIconBrightness:
@@ -1160,22 +1149,19 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
             statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
           ),
         ),
-        // --- MODIFIKASI: `body` sekarang dibungkus GestureDetector ---
-        body: GestureDetector( // <-- DITAMBAHKAN
-          onHorizontalDragEnd: _handleHorizontalSwipe, // <-- DITAMBAHKAN
+        body: GestureDetector( 
+          onHorizontalDragEnd: _handleHorizontalSwipe, 
           child: Column(
             children: [
-              // --- MODIFIKASI: Header Bar ditambahkan di sini & dibungkus animasi ---
-              SizeTransition( // <-- MODIFIKASI: Diganti dari SlideTransition
+              SizeTransition( 
                 axis: Axis.vertical,
-                axisAlignment: -1.0, // Kolaps ke arah atas
+                axisAlignment: -1.0, 
                 sizeFactor: CurvedAnimation(
                   parent: _headerAnimController,
                   curve: Curves.fastOutSlowIn,
-                ).drive(Tween<double>(begin: 1.0, end: 0.0)), // Animasikan ukuran dari 1.0 ke 0.0
+                ).drive(Tween<double>(begin: 1.0, end: 0.0)), 
                 child: _buildHeaderBar(context),
               ),
-              // --- MODIFIKASI: CustomScrollView dibungkus di dalam Expanded ---
               Expanded(
                 child: CustomScrollView(
                   controller: _scrollController,
@@ -1189,25 +1175,21 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            // --- MODIFIKASI BARU: Kategori, Waktu, dan Judul ---
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(23.0, 16.0, 23.0, 20.0), // Beri padding bawah
+                              padding: const EdgeInsets.fromLTRB(23.0, 16.0, 23.0, 20.0), 
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  // 1. Kategori (DIPINDAH DARI BAWAH)
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      // --- MODIFIKASI: ClipPath untuk Jajar Genjang ---
                                       ClipPath(
                                         clipper: ParallelogramClipper(skew: 10.0),
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(
-                                              horizontal: 12, vertical: 4), // Padding disesuaikan
+                                              horizontal: 12, vertical: 4), 
                                           decoration: BoxDecoration(
                                             color: const Color(0xFFE5FF10),
-                                            // borderRadius: BorderRadius.circular(5), // <-- HAPUS
                                           ),
                                           child: Text(
                                             widget.article.category.toUpperCase(),
@@ -1220,28 +1202,16 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                                           ),
                                         ),
                                       ),
-                                      // --- MODIFIKASI: Waktu publish dan separator dihapus dari sini ---
-                                      // const SizedBox(width: 8),
-                                      // Text(
-                                      //    '•',
-                                      // ...
-                                      // ),
-                                      // const SizedBox(width: 8),
-                                      // Text(
-                                      //    _formatDateRelative(widget.article.publishedAt),
-                                      // ...
-                                      // ),
                                     ],
                                   ),
                                   const SizedBox(height: 16),
-                                  // 2. Title (DIPINDAH DARI _buildStandardView)
                                   Text(
                                     widget.article.title,
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontFamily: 'Domine',
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 28,
+                                      fontSize: 24,
                                       letterSpacing: 0.3,
                                       height: 1.3,
                                       color: isDark ? Colors.white : Colors.black,
@@ -1250,16 +1220,11 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                                 ],
                               ),
                             ),
-                            // --- AKHIR MODIFIKASI BARU ---
-
-                            // 3. Gambar (Posisi setelah header baru)
                             if (widget.article.urlToImage != null)
                               Column(
                                 children: [
-                                  // --- MODIFIKASI DIMULAI ---
-                                  // Menambahkan Padding untuk 'jarak' horizontal 23.0
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 23.0),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
                                     child: GestureDetector(
                                       onTap: () => _showFocusedImage(
                                           context,
@@ -1269,7 +1234,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                                           widget.article.category),
                                       child: Hero(
                                         tag: widget.heroTag,
-                                        // Menambahkan ClipRRect untuk 'radius 5'
                                         child: ClipRRect(
                                           borderRadius: BorderRadius.circular(5.0),
                                           child: CachedNetworkImage(
@@ -1293,8 +1257,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                                       ),
                                     ),
                                   ),
-                                  // --- MODIFIKASI SELESAI ---
-
                                   if (widget.article.imageCaption != null &&
                                       widget.article.imageCaption!.isNotEmpty)
                                     Padding(
@@ -1307,7 +1269,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                                             height: 2,
                                             margin: const EdgeInsets.only(right: 8, top: 8),
                                             decoration: BoxDecoration(
-                                              color: Color(0xFFE5FF10),
+                                              color: Theme.of(context).brightness == Brightness.dark ? Color(0xFFE5FF10) : Colors.black,
                                               borderRadius: BorderRadius.circular(0),
                                             ),
                                           ),
@@ -1325,15 +1287,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                                       ),
                                     ),
                                   
-                                  // <<<===== MODIFIKASI: TAMBAHKAN TOMBOL TTS BARU DI SINI =====>>>
                                   Align(
                                     alignment: Alignment.centerLeft,
                                     child: _buildTtsPlayBar(context),
                                   ),
-                                  // <<<===== AKHIR MODIFIKASI =====>>>
 
                                   Padding(
-                                    // Beri jarak dari tombol TTS baru, dan beri jarak horizontal 23
                                     padding: const EdgeInsets.only(top: 20.0, bottom: 8.0, left: 23.0, right: 23.0),  
                                     child: Container(
                                       width: double.infinity,
@@ -1347,23 +1306,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                                 ],
                               ),
                             
-                            // 4. Author, Update, Konten, dll.
                             Padding(
-                              padding: const EdgeInsets.all(23.0),
+                              padding: const EdgeInsets.all(16.0),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  // --- KATEGORI & WAKTU DIHAPUS DARI SINI ---
-                                  // --- SIZEDBOX DIHAPUS DARI SINI ---
-
-                                  // _buildStandardView sekarang HANYA berisi Author/Update & Konten
-                                  // --- MODIFIKASI: Hapus pengecekan mode TTS ---
-                                  // if (_isSpeaking && _currentTtsMode == "normal")
-                                  //    _buildReadingView(context)
-                                  // else
-                                  //    _buildStandardView(context),
                                   _buildStandardView(context),
-                                  // --- AKHIR MODIFIKASI ---
 
                                   if (widget.article.tags.isNotEmpty) ...[
                                     const SizedBox(height: 24),
@@ -1402,46 +1350,22 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                                         ),
                                         foregroundColor: Theme.of(context).brightness == Brightness.dark
                                             ? const Color(0xFFE5FF10)
-                                            : Colors.black, // Icon & text color
+                                            : Colors.black, 
                                       ),
                                     ),
                                   ),
                                   const SizedBox(height: 12),
-                                  // Center(
-                                  //   child: Row(
-                                  //     mainAxisSize: MainAxisSize.min,
-                                  //     mainAxisAlignment: MainAxisAlignment.center,
-                                  //     children: [
-                                  //       Icon(_getPlatformInfoIcon(),
-                                  //           size: 14, color: Colors.grey[600]),
-                                  //       const SizedBox(width: 6),
-                                  //       Text(
-                                  //         _getPlatformInfoText(),
-                                  //         style: TextStyle(
-                                  //             color: Colors.grey[600],
-                                  //             fontSize: 12,
-                                  //             fontWeight: FontWeight.w500),
-                                  //       ),
-                                  //     ],
-                                  //   ),
-                                  // ),
                                   
-                                  // <<<===== MODIFIKASI DI SINI =====>>>
-                                  // Ganti SizedBox(height: 80) dengan prompt swipe
-                                  const SizedBox(height: 20), // <-- DIHAPUS
-                                  _buildSwipePrompt(context), // <-- DITAMBAHKAN
+                                  const SizedBox(height: 20), 
+                                  _buildSwipePrompt(context), 
                                   
-                                  // Beri jarak sisa
-                                  const SizedBox(height: 30), // <-- Ganti 80 jadi (padding 24 + ~26 + sisa 30)
-                                  // <<<===== AKHIR MODIFIKASI =====>>>
+                                  const SizedBox(height: 30), 
                                 ],
                               ),
                             ),
 
-                            // --- BARU: Tambahkan widget topik terkait di sini ---
                             _buildRelatedTopicsSection(),
-                            const SizedBox(height: 24), // Padding di bagian paling bawah
-                            // --- AKHIR BARU ---
+                            const SizedBox(height: 24), 
                           ],
                         ),
                       ),
@@ -1452,11 +1376,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
             ],
           ),
         ),
-        // --- MODIFIKASI: bottomNavigationBar dihapus ---
-        // bottomNavigationBar: _buildMainBottomBar(context),
         bottomNavigationBar: SizeTransition(
           axis: Axis.vertical,
-          axisAlignment: 1.0, // Kolaps ke arah bawah
+          axisAlignment: 1.0, 
           sizeFactor: CurvedAnimation(
             parent: _bottomBarAnimController,
             curve: Curves.fastOutSlowIn,
@@ -1467,11 +1389,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     );
   }
 
-  // --- BARU: Widget untuk petunjuk swipe ---
   Widget _buildSwipePrompt(BuildContext context) {
-    // Hanya tampilkan di mobile (Android/iOS)
     if (kIsWeb || (!Platform.isAndroid && !Platform.isIOS)) {
-      return const SizedBox.shrink(); // Jangan tampilkan di web
+      return const SizedBox.shrink(); 
     }
 
     final Color hintColor = Theme.of(context).brightness == Brightness.dark
@@ -1479,7 +1399,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
         : Colors.grey[500]!;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 24.0, bottom: 24.0), // Beri jarak
+      padding: const EdgeInsets.only(top: 24.0, bottom: 24.0), 
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -1500,36 +1420,27 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       ),
     );
   }
-  // --- AKHIR BARU ---
 
-  // --- MODIFIKASI: Fungsi ini diubah dari _buildMainBottomBar menjadi _buildHeaderBar ---
   Widget _buildHeaderBar(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Ambil padding atas (status bar)
-    final double topPadding = MediaQuery.of(context).viewPadding.top;
-
+    
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? Colors.black : Colors.white,
+        color: isDark ? Color(0xFF1A1A1A) : Color(0xFFF5F5F5),
         border: Border(
-          // --- MODIFIKASI: Border diubah dari 'top' ke 'bottom' ---
           bottom: BorderSide(
-              color: isDark ? Colors.grey[800]! : Colors.grey[200]!, width: 1),
+              color: isDark ? Colors.grey[800]! : Colors.grey[400]!, width: 1),
         ),
       ),
-      // --- MODIFIKASI: SafeArea(top: false) dihapus ---
       child: Padding(
-        // --- MODIFIKASI: Padding disesuaikan untuk status bar ---
         padding: EdgeInsets.only(
           left: 4.0,
           right: 4.0,
           bottom: 4.0,
-          top: topPadding + 4.0, // Menambahkan padding status bar + padding asli
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Kiri: Kembali
             Row(
               children: [
                 IconButton(
@@ -1544,17 +1455,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                   },
                   padding: const EdgeInsets.all(12),
                 ),
-                // --- MODIFIKASI: Tombol font lama dihapus dari sini ---
-                // _buildFontMenuButton(), // BARU: Tombol menu font
               ],
             ),
 
-            // Kanan: Font, Bookmark, Share
             Row(
               children: [
-                // --- MODIFIKASI: Tombol font BARU ditambahkan di sini ---
                 _buildNewFontMenuButton(),
-                // Bookmark icon muncul dulu baru share
                 BookmarkIconButton(
                   isBookmarked: _isBookmarkedLocal,
                   onToggle: () {
@@ -1564,10 +1470,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                       setState(() {
                         _isBookmarkedLocal = newBookmarkState;
                       });
-                      // --- PERUBAHAN DI SINI ---
-                      // Memanggil fungsi snackbar dari file utilitas
                       showBookmarkSnackbar(context, newBookmarkState);
-                      // --- AKHIR PERUBAHAN ---
                     } else {
                       _showLoginRequiredPanel();
                     }
@@ -1590,12 +1493,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     );
   }
 
-  // --- MODIFIKASI: FUNGSI _buildFontMenuButton LAMA DIHAPUS ---
-  // Widget _buildFontMenuButton() { ... }
-  // --- AKHIR FUNGSI YANG DIHAPUS ---
-
-  // --- MODIFIKASI: FUNGSI BARU UNTUK TOMBOL FONT "aA" ---
-  /// Widget untuk tombol menu font "aA" yang baru dan popup style mirip gambar UI
   Widget _buildNewFontMenuButton() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final iconColor = isDark ? Colors.white : Colors.black;
@@ -1638,7 +1535,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                       final size = _fontSizes[index];
                       final bool isSelected = _currentFontSizeIndex == index;
                       final Color color = isSelected
-                          ? Colors.red
+                          ? Color(0xFFE5FF10)
                           : (isDark ? Colors.white70 : Colors.black54);
 
                       return GestureDetector(
@@ -1665,15 +1562,42 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                                   )
                                 : null,
                           ),
-                          child: Text(
-                            "A",
-                            style: TextStyle(
-                              fontFamily: 'Domine',
-                              fontSize: size,
-                              fontWeight: FontWeight.bold,
-                              color: color,
-                            ),
-                          ),
+                          child: isSelected && !isDark
+                              ? Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Text(
+                                      "A",
+                                      style: TextStyle(
+                                        fontFamily: 'Domine',
+                                        fontSize: size,
+                                        fontWeight: FontWeight.bold,
+                                        foreground: Paint()
+                                          ..style = PaintingStyle.stroke
+                                          ..strokeWidth = 2
+                                          ..color = Colors.black,
+                                      ),
+                                    ),
+                                    Text(
+                                      "A",
+                                      style: TextStyle(
+                                        fontFamily: 'Domine',
+                                        fontSize: size,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFFE5FF10),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Text(
+                                  "A",
+                                  style: TextStyle(
+                                    fontFamily: 'Domine',
+                                    fontSize: size,
+                                    fontWeight: FontWeight.bold,
+                                    color: color,
+                                  ),
+                                ),
                         ),
                       );
                     }),
@@ -1703,85 +1627,79 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       ),
     );
   }
-  // --- AKHIR FUNGSI BARU ---
 
-
-  // --- MODIFIKASI: Judul (Text) dihapus dari fungsi ini ---
   Widget _buildStandardView(BuildContext context) {
-    // final isDark = Theme.of(context).brightness == Brightness.dark; // Tidak terpakai lagi
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Text(widget.article.title, ...) <-- DIPINDAHKAN KE ATAS
-        // const SizedBox(height: 16), <-- DIHAPUS
         _buildMetaInfoSection(context),
         const SizedBox(height: 16),
         
-        // >>> TAMBAHKAN TOMBOL QUICK DI SINI >>>
         _buildQuickButton(context),
         const SizedBox(height: 24),
-        // --- PERUBAHAN: Hapus "..." (spread operator) ---
         _buildContentWithBlockquotes(widget.article.content),
-        // --- AKHIR PERUBAHAN ---
       ],
     );
   }
 
-  // --- HAPUS FUNGSI _buildReadingView ---
-  // Widget _buildReadingView(BuildContext context) { ... }
-  // --- AKHIR HAPUS ---
-
   Widget _buildMetaInfoSection(BuildContext context) {
-    final String? penulisString = widget.article.penulis;
-    final bool hasPenulis = penulisString != null && penulisString.isNotEmpty;
+    String displayName = "";
+    bool showName = false;
 
-    // --- MODIFIKASI: Format tanggal digabungkan ---
-    final DateFormat consistentFormat = DateFormat('d MMM y, HH:mm', 'id_ID');
+    if (widget.article.penulis != null && widget.article.penulis!.isNotEmpty) {
+      displayName = widget.article.penulis!;
+      showName = true;
+    } 
+    else if (widget.article.author != null && 
+             widget.article.author!.isNotEmpty && 
+             widget.article.author != "Unknown Author") {
+      String cleanAuthor = widget.article.author!.replaceAll(RegExp(r'^https?:\/\/.*'), '').trim();
+      if (cleanAuthor.isNotEmpty) {
+        displayName = cleanAuthor;
+        showName = true;
+      }
+    }
+
+    final String publishString = _formatDateRelative(widget.article.publishedAt);
     
-    final String publishString = consistentFormat.format(widget.article.publishedAt);
-    final String updateString = "Update ${consistentFormat.format(widget.article.modifiedAt)} WIB";
-
+    final String updateString = 
+        "Update ${DateFormat('d MMM y, HH:mm', 'id_ID').format(widget.article.modifiedAt)} WIB";
+    
     final String combinedDateString = "$publishString | $updateString";
-    // --- AKHIR MODIFIKASI ---
 
     return Align(
       alignment: Alignment.centerLeft,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (widget.article.authorList.isNotEmpty)
+          if (showName)
             Padding(
-              padding: const EdgeInsets.only(bottom: 4.0),
-              child: Text(
-                "Author: ${widget.article.authorList.map((a) => a['name']).join(', ')}",
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.color
-                          ?.withOpacity(0.9),
+              padding: const EdgeInsets.only(bottom: 2.0),
+              child: RichText(
+                text: TextSpan(
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400, 
+                        color: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.color
+                            ?.withOpacity(0.9),
+                      ),
+                  children: [
+                    const TextSpan(
+                      text: "By ",
                     ),
+                    TextSpan(
+                      text: displayName, 
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold, 
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          if (hasPenulis)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4.0),
-              child: Text(
-                "Penulis: $penulisString",
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.color
-                          ?.withOpacity(0.9),
-                    ),
-              ),
-            ),
-          // --- MODIFIKASI: Tampilkan string tanggal gabungan ---
           Text(
             combinedDateString,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -1791,6 +1709,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                       .bodySmall
                       ?.color
                       ?.withOpacity(0.7),
+                  fontWeight: FontWeight.w400,
                 ),
           ),
         ],
@@ -1800,16 +1719,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
 
   Widget _buildTagsSection(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tags = widget.article.tags;
 
     return Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        Icon(
-          Icons.local_offer,
-          size: 16,
-          color: isDark ? Colors.grey[400] : Colors.grey[700],
-        ),
         const SizedBox(width: 4),
         Text(
           "Tag: ",
@@ -1820,31 +1735,30 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
           ),
         ),
         Flexible(
-          child: Text(
-            widget.article.tags.map((tag) => "#$tag").join(", "),
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-            overflow: TextOverflow.ellipsis,
+          child: Wrap(
+            alignment: WrapAlignment.start,
+            spacing: 4,
+            runSpacing: 4,
+            children: [
+              for (int i = 0; i < tags.length; i++)
+                Text(
+                  '#${tags[i]}${i != tags.length - 1 ? ',' : ''}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  // --- HAPUS FUNGSI _buildTtsIconButton ---
-  // Widget _buildTtsIconButton() { ... }
-  // --- AKHIR HAPUS ---
-
-  // <<<===== MODIFIKASI: FUNGSI BARU UNTUK TOMBOL TTS =====>>>
-  /// Widget untuk tombol Play/Pause/Continue TTS yang lebar di bawah gambar
   Widget _buildTtsPlayBar(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // State baru untuk support "Paused"
-    // _isSpeaking: sedang berjalan, _isPaused: sedang pause
     final Color borderColor = isDark
         ? Colors.white.withOpacity(0.18)
         : Colors.black.withOpacity(0.13);
@@ -1855,9 +1769,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     late Color iconColor;
     if (_isLoading) {
       iconColor = isDark ? Colors.white54 : Colors.black54;
-    // --- HAPUS LOGIKA WARNA _isPaused ---
-    // } else if (_isPaused) {
-    //    iconColor = Colors.amber;
     } else if (_isSpeaking) {
       iconColor = Colors.redAccent;
     } else {
@@ -1866,20 +1777,12 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
 
     late Color textColor;
     if (isDark) {
-      // --- HAPUS LOGIKA WARNA _isPaused ---
-      // if (_isPaused) {
-      //    textColor = Colors.amber;
-      // } else 
       if (_isSpeaking) {
         textColor = Colors.redAccent;
       } else {
         textColor = Colors.white;
       }
     } else {
-      // --- HAPUS LOGIKA WARNA _isPaused ---
-      // if (_isPaused) {
-      //    textColor = Colors.amber[900]!;
-      // } else 
       if (_isSpeaking) {
         textColor = Colors.red;
       } else {
@@ -1887,27 +1790,24 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       }
     }
 
-    // --- PERBAIKAN: _onTtsPlayBarTap disederhanakan ---
     void _onTtsPlayBarTap() {
       if (_isLoading) return;
-      _toggleSpeech(); // _toggleSpeech sekarang menangani semua state
+      _toggleSpeech(); 
     }
 
     IconData getIcon() {
       if (_isLoading) {
         return Icons.hourglass_empty;
-      // --- MODIFIKASI: Hapus _isPaused, ubah ikon _isSpeaking ---
       } else if (_isSpeaking) {
-        return Icons.stop_rounded; // Tampilkan 'Stop' saat jalan
+        return Icons.stop_rounded; 
       } else {
-        return Icons.play_arrow_rounded; // Tampilkan 'Play' saat berhenti
+        return Icons.play_arrow_rounded; 
       }
     }
 
     String getButtonText() {
       if (_isLoading) {
         return "Process...";
-      // --- MODIFIKASI: Hapus _isPaused, ubah teks _isSpeaking ---
       } else if (_isSpeaking) {
         return "Berhenti";
       } else {
@@ -1916,7 +1816,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18.0, 16.0, 18.0, 0.0), // PERBAIKAN: Tambah padding kanan
+      padding: const EdgeInsets.fromLTRB(18.0, 16.0, 18.0, 0.0), 
       child: Material(
         color: bgColor,
         borderRadius: BorderRadius.circular(100),
@@ -1931,8 +1831,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
               borderRadius: BorderRadius.circular(100),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min, // Buat agar tombol tidak selebar layar
-              mainAxisAlignment: MainAxisAlignment.center, // Pusatkan isi tombol
+              mainAxisSize: MainAxisSize.min, 
+              mainAxisAlignment: MainAxisAlignment.center, 
               children: [
                 _isLoading
                     ? SizedBox(
@@ -1970,20 +1870,19 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       ),
     );
   }
-  // <<<===== AKHIR FUNGSI BARU =====>>>
 
   Widget _buildQuickButton(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 0), // jarak kiri + kanan sama
+      padding: const EdgeInsets.symmetric(horizontal: 0), 
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _navigateToQuickScreen(),
           borderRadius: BorderRadius.circular(8),
           child: Container(
-            width: double.infinity, // agar lebar ikut parent (padding sudah mengatur batas)
+            width: double.infinity, 
             padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
             decoration: BoxDecoration(
               color: isDark
@@ -2041,7 +1940,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                     ],
                   ),
                 ),
-                const SizedBox(width: 16), // padding kanan biar sama dengan kiri
+                const SizedBox(width: 16), 
               ],
             ),
           ),
@@ -2050,13 +1949,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     );
   }
 
-  // --- PERUBAHAN BESAR: FUNGSI INI DIGANTI TOTAL ---
-  /// Fungsi ini sekarang mengembalikan satu Widget (Html) bukan List<Widget>
-  /// dan menggunakan flutter_html untuk me-render semua blok Gutenberg.
   Widget _buildContentWithBlockquotes(String? content) {
-    // --- MODIFIKASI: Menggunakan state font size baru ---
     final currentFontSize = _fontSizes[_currentFontSizeIndex];
-    // --- AKHIR MODIFIKASI ---
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final String? htmlData = (content != null && content.isNotEmpty)
@@ -2076,19 +1970,20 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       );
     }
 
-    // Gaya dasar untuk semua teks
     final baseTextStyle = TextStyle(
       fontFamily: 'SourceSerif4',
       fontWeight: FontWeight.w400,
-      fontSize: currentFontSize, // <-- Diganti dari _fontSizeMap
+      fontSize: currentFontSize, 
       height: 1.6,
       color: isDark ? Colors.white70 : Colors.black87,
     );
 
+    final Color blockquoteAccentColor = isDark ? const Color(0xFFE5FF10) : Colors.black;
+
     return Html(
       data: htmlData,
       extensions: [
-        VideoHtmlExtension(), // <video> and <iframe>
+        VideoHtmlExtension(), 
         TagExtension(
           tagsToExtend: {"img"},
           builder: (context) {
@@ -2112,7 +2007,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
         TagExtension(
           tagsToExtend: {"blockquote"},
           builder: (context) {
-            // Detect if blockquote memiliki class wp-block-quote agar tetap backward compatible
             final el = context.element;
             final classes = el?.classes ?? {};
             if (el == null || (!classes.contains("wp-block-quote") && el.localName != "blockquote")) {
@@ -2129,9 +2023,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                 : null;
 
             final isDark = Theme.of(context.buildContext!).brightness == Brightness.dark;
-            // --- MODIFIKASI: Menggunakan state font size baru ---
             final currentFontSize = _fontSizes[_currentFontSizeIndex];
-            // --- AKHIR MODIFIKASI ---
+
+            final Color blockquoteAccentColor = isDark ? const Color(0xFFE5FF10) : Colors.black;
 
             if (mainQuote.isEmpty) return const SizedBox.shrink();
 
@@ -2143,7 +2037,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16), bottom: Radius.circular(10)),
                 border: Border(
                   left: BorderSide(
-                    color: const Color(0xFFE5FF10),
+                    color: blockquoteAccentColor,
                     width: 4,
                   ),
                 ),
@@ -2153,7 +2047,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                 children: [
                   Icon(
                     Icons.format_quote,
-                    color: const Color(0xFFE5FF10),
+                    color: blockquoteAccentColor,
                     size: 24,
                   ),
                   const SizedBox(width: 12),
@@ -2183,7 +2077,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                                   width: 28,
                                   height: 1.2,
                                   margin: const EdgeInsets.only(top: 11, right: 8),
-                                  color: const Color(0xFFE5FF10),
+                                  color: blockquoteAccentColor,
                                 ),
                                 Expanded(
                                   child: Text(
@@ -2288,7 +2182,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       },
     );
   }
-  // --- AKHIR FUNGSI YANG DIGANTI ---
 
   String _getPlatformButtonText() {
     return 'Baca di Browser';
@@ -2318,11 +2211,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
     return Icons.devices_other;
   }
 
-  // --- BARU: Widget untuk membangun bagian "Topik Terkait" ---
   Widget _buildRelatedTopicsSection() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Handle loading
     if (_isLoadingRelated) {
       return const Center(
         child: Padding(
@@ -2332,7 +2223,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       );
     }
 
-    // Handle error
     if (_relatedError != null) {
       return Center(
         child: Padding(
@@ -2346,23 +2236,18 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       );
     }
 
-    // Handle tidak ada artikel terkait
     if (_relatedArticles.isEmpty) {
-      // Jangan tampilkan apa-apa jika tidak ada artikel terkait
       return const SizedBox.shrink();
     }
 
-    // --- Build UI utama ---
-    // Membuat padding horizontal pada border top agar sejajar dengan konten
     return Column(
       children: [
-        // Garis pemisah dengan padding kiri-kanan mengikuti konten
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 22.0),
           child: Divider(
             color: Color(0xFF888888),
             thickness: 1.0,
-            height: 0, // Biar tidak menambah vertical spacing
+            height: 0, 
           ),
         ),
         Container(
@@ -2371,9 +2256,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Judul Bagian
               const Text(
-                "Topik yang Berhubungan",
+                "Article Related",
                 style: TextStyle(
                   fontFamily: 'Domine',
                   fontWeight: FontWeight.bold,
@@ -2383,20 +2267,18 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
               ),
               const SizedBox(height: 20),
 
-              // 2. Grid 2x2
               GridView.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, // 2 kolom
-                  crossAxisSpacing: 16.0, // Jarak horizontal antar item
-                  mainAxisSpacing: 16.0, // Jarak vertikal antar item
-                  childAspectRatio: 0.9, // <-- MODIFIKASI: Diubah dari 0.7 ke 0.9
+                  crossAxisCount: 2, 
+                  crossAxisSpacing: 16.0, 
+                  mainAxisSpacing: 16.0, 
+                  childAspectRatio: 0.9, 
                 ),
-                itemCount: _relatedArticles.length, // Maksimal 4 (dari _fetchRelatedArticles)
-                shrinkWrap: true, // Penting di dalam CustomScrollView
-                physics: const NeverScrollableScrollPhysics(), // Penting di dalam CustomScrollView
+                itemCount: _relatedArticles.length, 
+                shrinkWrap: true, 
+                physics: const NeverScrollableScrollPhysics(), 
                 itemBuilder: (context, index) {
                   final article = _relatedArticles[index];
-                  // Panggil widget card kustom
                   return _buildRelatedArticleCard(article);
                 },
               ),
@@ -2406,22 +2288,17 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       ],
     );
   }
-  // --- AKHIR BARU ---
 
-  // --- BARU: Widget untuk 1 card di "Topik Terkait" ---
   Widget _buildRelatedArticleCard(Article article) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Buat hero tag unik untuk artikel terkait
     final String heroTag = 'related_${article.id}_${UniqueKey().toString()}';
 
     return GestureDetector(
       onTap: () {
-        // Hentikan TTS jika sedang berjalan sebelum pindah halaman
         if (_isSpeaking || _isLoading) {
           _stopSpeaking();
         }
 
-        // Navigasi ke layar detail baru untuk artikel yang diklik
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -2437,7 +2314,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          // 1. Gambar
           Hero(
             tag: heroTag,
             child: CachedNetworkImage(
@@ -2458,7 +2334,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
             ),
           ),
           const SizedBox(height: 8),
-          // Judul
           Expanded(
             child: Text(
               article.title,
@@ -2479,15 +2354,13 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       ),
     );
   }
-  // --- AKHIR BARU ---
+
   Widget _buildBottomNavBar(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color background = isDark ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
-    final Color activeColor = isDark ? const Color(0xFFE5FF10) : Colors.black;
+    final Color background = isDark ? const Color(0xFF1A1A1A) : Color(0xFFF5F5F5);
     final Color inactiveColor = isDark ? Colors.grey[700]! : Colors.grey[500]!;
-    final Color borderTopColor = isDark ? Colors.grey[800]! : Colors.grey[200]!;
+    final Color borderTopColor = isDark ? Colors.grey[800]! : Colors.grey[400]!;
 
-    // Helper: Convert Color to hex (for SVG fill)
     String colorToHex(Color color) {
       return '#${color.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
     }
@@ -2497,7 +2370,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
         color: background,
         border: Border(
           top: BorderSide(
-            color: borderTopColor, // Clearly visible border on top depending on theme
+            color: borderTopColor, 
             width: 1.0,
           ),
         ),
@@ -2509,11 +2382,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              // OWRITE (Home)
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    // Kembali ke home (pop semua sampai first route)
                     Navigator.of(context).popUntil((route) => route.isFirst);
                   },
                   child: Column(
@@ -2551,7 +2422,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                 ),
               ),
               
-              // QUICK
               Expanded(
                 child: InkWell(
                   onTap: () => _navigateToQuickScreenOriginal(),
@@ -2590,16 +2460,14 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                 ),
               ),
               
-              // WATCH
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    // Navigasi langsung ke WATCH tab tanpa berhenti di home
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(
                         builder: (context) => const MainScreen(initialTab: 2),
                       ),
-                      (route) => false, // Hapus semua route sebelumnya
+                      (route) => false, 
                     );
                   },
                   child: Column(
@@ -2635,16 +2503,14 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                 ),
               ),
               
-              // ACCOUNT
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    // Navigasi langsung ke ACCOUNT tab tanpa berhenti di home
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(
                         builder: (context) => const MainScreen(initialTab: 3),
                       ),
-                      (route) => false, // Hapus semua route sebelumnya
+                      (route) => false, 
                     );
                   },
                   child: Column(
@@ -2659,7 +2525,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                             child: SvgPicture.string(
                               '''
                               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                                <path fill="${colorToHex(inactiveColor)}" d="M12 4a4 4 0 0 1 4 4a4 4 0 0 1-4 4a4 4 0 0 1-4-4a4 4 0 0 1 4-4m0 2a2 2 0 0 0-2 2a2 2 0 0 0 2 2a2 2 0 0 0 2-2a2 2 0 0 0-2-2m0 7c2.67 0 8 1.33 8 4v3H4v-3c0-2.67 5.33-4 8-4m0 1.9c-2.97 0-6.1 1.46-6.1 2.1v1.1h12.2V17c0-.64-3.13-2.1-6.1-2.1Z"/>
+                                <path fill="${colorToHex(inactiveColor)}" d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1M8 13h8v-2H8v2m9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5Z"/>
                               </svg>
                               ''',
                               width: 24,
@@ -2670,7 +2536,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'ACCOUNT',
+                        'LINK',
                         style: TextStyle(
                           fontSize: 12,
                           color: inactiveColor,
@@ -2748,7 +2614,6 @@ class _BookmarkIconButtonState extends State<BookmarkIconButton>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Tentukan warna ikon default berdasarkan tema
     final defaultIconColor = isDark ? Colors.white : Colors.black;
 
     return IconButton(
@@ -2766,7 +2631,7 @@ class _BookmarkIconButtonState extends State<BookmarkIconButton>
       onPressed: widget.onToggle,
       tooltip:
           widget.isBookmarked ? 'Hapus dari koleksi' : 'Simpan ke koleksi',
-      padding: const EdgeInsets.all(12), // Samakan padding
+      padding: const EdgeInsets.all(12), 
     );
   }
 }
@@ -2788,28 +2653,23 @@ class _FocusedImageView extends StatefulWidget {
 }
 
 class _FocusedImageViewState extends State<_FocusedImageView> {
-  // bool _showOverlayText = true; // <-- DIHAPUS
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: GestureDetector(
-        onTap: () => Navigator.pop(context), // Tap di background untuk menutup
+        onTap: () => Navigator.pop(context), 
         child: Stack(
           fit: StackFit.expand,
           children: [
             Center(
                 child: Hero(
                     tag: widget.heroTag,
-                    // --- TAMBAHAN WRAPPER INI ---
-                    // Ini memperbaiki bug "blank screen" di HP saat Hero
-                    // beranimasi ke dalam Dialog.
                     child: Material(
                       type: MaterialType.transparency,
                       child: InteractiveViewer(
                           minScale: 1.0,
                           maxScale: 4.0,
-                          // GestureDetector di dalam sini dihapus
                           child: CachedNetworkImage(
                               imageUrl: widget.imageUrl,
                               fit: BoxFit.contain,
@@ -2817,63 +2677,8 @@ class _FocusedImageViewState extends State<_FocusedImageView> {
                                   child: CircularProgressIndicator()),
                               errorWidget: (c, u, e) => const Center(
                                   child: Icon(Icons.broken_image,
-                                      color: Colors.white)))),
+                                    color: Colors.white)))),
                     ))),
-            
-            // --- SEMUA BLOK "AnimatedOpacity" DIHAPUS ---
-            // Ini adalah "efek" (overlay teks) yang Anda minta hilangkan.
-            /*
-            AnimatedOpacity(
-              opacity: _showOverlayText ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 300),
-              child: IgnorePointer(
-                ignoring: !_showOverlayText,
-                child: Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(24).copyWith(top: 48),
-                    decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: [
-                          Colors.black.withOpacity(0.8),
-                          Colors.transparent
-                        ])),
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration:
-                                  const BoxDecoration(color: Colors.yellow),
-                              child: Text(widget.category,
-                                  style: const TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold))),
-                          const SizedBox(height: 8),
-                          Text(widget.title,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  shadows: [
-                                    Shadow(color: Colors.black, blurRadius: 4)
-                                  ]),
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis)
-                        ]),
-                  ),
-                ),
-              ),
-            ),
-            */
-            // --- AKHIR BLOK YANG DIHAPUS ---
           ],
         ),
       ),
@@ -2881,10 +2686,7 @@ class _FocusedImageViewState extends State<_FocusedImageView> {
   }
 }
 
-// --- BARU: CustomClipper untuk Kategori ---
-/// Membuat bentuk jajar genjang (parallelogram) shape
 class ParallelogramClipper extends CustomClipper<Path> {
-  /// Seberapa miring (skew) bentuknya. Nilai lebih besar = lebih miring.
   final double skew;
 
   ParallelogramClipper({this.skew = 20.0});
@@ -2892,13 +2694,9 @@ class ParallelogramClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     final path = Path();
-    // Kiri atas (start di x=skew, y=0)
     path.moveTo(skew, 0.0);
-    // Kanan atas (x=size.width, y=0)
     path.lineTo(size.width, 0.0);
-    // Kanan bawah (x=size.width - skew, y=size.height)
     path.lineTo(size.width - skew, size.height);
-    // Kiri bawah (x=0, y=size.height)
     path.lineTo(0.0, size.height);
     path.close();
     return path;
@@ -2909,48 +2707,3 @@ class ParallelogramClipper extends CustomClipper<Path> {
     return oldClipper.skew != skew;
   }
 }
-// --- AKHIR BARU ---
-
-
-// --- HAPUS FUNGSI pcmToWav ---
-// Fungsi ini tidak diperlukan karena API Google TTS dikonfigurasi
-// untuk mengembalikan MP3, dan audioplayers dapat memutar MP3
-// dari bytes (BytesSource) secara langsung.
-/*
-/// Mengonversi data audio PCM mentah (dari Gemini) menjadi format WAV
-Uint8List pcmToWav(Uint8List pcmData, int sampleRate, int channels, int bitDepth) {
-  int pcmSize = pcmData.lengthInBytes;
-  int wavSize = pcmSize + 44; // 44 byte untuk header WAV
-  int byteRate = (sampleRate * channels * bitDepth) ~/ 8;
-  int blockAlign = (channels * bitDepth) ~/ 8;
-
-  final header = ByteData(44);
-  final data = Uint8List(wavSize);
-
-  // RIFF chunk
-  header.setUint32(0, 0x52494646, Endian.little); // "RIFF"
-  header.setUint32(4, wavSize - 8, Endian.little); // Ukuran file - 8
-  header.setUint32(8, 0x57415645, Endian.little); // "WAVE"
-
-  // "fmt " sub-chunk
-  header.setUint32(12, 0x666D7420, Endian.little); // "fmt "
-  header.setUint32(16, 16, Endian.little); // Ukuran sub-chunk fmt (16 untuk PCM)
-  header.setUint16(20, 1, Endian.little); // Format audio (1 untuk PCM)
-  header.setUint16(22, channels.toUnsigned(16), Endian.little); // Jumlah channel
-  header.setUint32(24, sampleRate.toUnsigned(32), Endian.little); // Sample rate
-  header.setUint32(28, byteRate.toUnsigned(32), Endian.little); // Byte rate
-  header.setUint16(32, blockAlign.toUnsigned(16), Endian.little); // Block align
-  header.setUint16(34, bitDepth.toUnsigned(16), Endian.little); // Bits per sample
-
-  // "data" sub-chunk
-  header.setUint32(36, 0x64617461, Endian.little); // "data"
-  header.setUint32(40, pcmSize.toUnsigned(32), Endian.little); // Ukuran data PCM
-
-  // Gabungkan header dan data PCM
-  data.setAll(0, header.buffer.asUint8List());
-  data.setAll(44, pcmData);
-
-  return data;
-}
-*/
-// --- AKHIR HAPUS ---
