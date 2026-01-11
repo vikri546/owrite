@@ -9,18 +9,43 @@ class CustomPageTransitionBuilder extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    const begin = Offset(1.0, 0.0);
-    const end = Offset.zero;
-    const curve = Curves.easeInOutCubic;
+    // Zoom in animation for entering page
+    const curve = Curves.easeOutCubic;
+    
+    // Scale from 0.85 to 1.0 (zoom in effect)
+    final scaleAnimation = Tween<double>(
+      begin: 0.85,
+      end: 1.0,
+    ).chain(CurveTween(curve: curve)).animate(animation);
+    
+    // Fade in from 0 to 1
+    final fadeAnimation = CurvedAnimation(
+      parent: animation,
+      curve: curve,
+    );
+    
+    // Secondary animation for the page being covered (zoom out slightly)
+    final secondaryScaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.05,
+    ).chain(CurveTween(curve: curve)).animate(secondaryAnimation);
+    
+    final secondaryFadeAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.9,
+    ).chain(CurveTween(curve: curve)).animate(secondaryAnimation);
 
-    var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-    var offsetAnimation = animation.drive(tween);
-
-    return SlideTransition(
-      position: offsetAnimation,
-      child: FadeTransition(
-        opacity: animation,
-        child: child,
+    return FadeTransition(
+      opacity: secondaryFadeAnimation,
+      child: ScaleTransition(
+        scale: secondaryScaleAnimation,
+        child: FadeTransition(
+          opacity: fadeAnimation,
+          child: ScaleTransition(
+            scale: scaleAnimation,
+            child: child,
+          ),
+        ),
       ),
     );
   }

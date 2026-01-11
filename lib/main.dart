@@ -55,6 +55,11 @@ import 'services/notification_manager.dart';
 // Widgets
 import 'widgets/theme_transition_builder.dart';
 import 'widgets/theme_toggle_button.dart';
+import 'widgets/feedback_modal.dart';
+
+// Other
+import 'services/feedback_service.dart';
+import 'dart:async';
 
 // Warna background bottom bar untuk terang dan gelap
 const Color kBottomNavLightColor = Color(0xFFF5F5F5);
@@ -505,7 +510,14 @@ class MyApp extends StatelessWidget {
                   },
                 ),
               ),
-              darkTheme: darkThemeData,
+              darkTheme: darkThemeData.copyWith(
+                pageTransitionsTheme: PageTransitionsTheme(
+                  builders: {
+                    TargetPlatform.android: CustomPageTransitionBuilder(),
+                    TargetPlatform.iOS: CustomPageTransitionBuilder(),
+                  },
+                ),
+              ),
               themeMode: themeProvider.themeMode,
               locale: languageProvider.locale,
               supportedLocales: const [Locale('id', '')],
@@ -547,6 +559,10 @@ class _MainScreenState extends State<MainScreen>
   bool _isHandlingBookmark = false;
 
   DateTime? _lastPressedAt;
+  
+  // Feedback
+  final FeedbackService _feedbackService = FeedbackService();
+  Timer? _feedbackTimer;
 
   @override
   void initState() {
@@ -572,6 +588,7 @@ class _MainScreenState extends State<MainScreen>
           .loadArticles(refresh: true);
       _maybeAskNotificationPermission();
       _maybeAskLocationPermission();
+      _startFeedbackTimer();
     });
 
     _loadAllBookmarks();
@@ -579,6 +596,7 @@ class _MainScreenState extends State<MainScreen>
 
   @override
   void dispose() {
+    _feedbackTimer?.cancel();
     _removeToast();
     _tabController.dispose();
     super.dispose();
@@ -781,6 +799,19 @@ class _MainScreenState extends State<MainScreen>
     } else if (status.isGranted) {
       debugPrint("Location permission already granted.");
     }
+  }
+
+  /// Start feedback timer - shows after 3 minutes
+  void _startFeedbackTimer() {
+    _feedbackService.startTracking();
+    _feedbackTimer = Timer(const Duration(minutes: 3), () async {
+      if (!mounted) return;
+      final shouldShow = await _feedbackService.shouldShowFeedback();
+      if (shouldShow && mounted) {
+        showFeedbackModal(context);
+      }
+    });
+    debugPrint("✅ Feedback timer started (3 minutes)");
   }
 
   Future<void> _showPermissionPermanentlyDeniedDialog({

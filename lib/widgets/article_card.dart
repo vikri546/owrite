@@ -375,96 +375,176 @@ class _ArticleCardState extends State<ArticleCard> {
     final Color textColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
     final Color iconColor = isDark ? Colors.white70 : Colors.black54;
 
-    final imageWidget = Expanded(
-      flex: 1,
-      child: AspectRatio(
-        aspectRatio: 1 / 1,
-        child: _buildImage(heroTag, isDark, fit: BoxFit.cover),
-      ),
-    );
-
-    final textWidget = Expanded(
-      flex: 3,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildRectangularCategory(isDark),
-          const SizedBox(height: 10),
-          _buildTitle(
-            isDark,
-            maxLines: widget.titleMaxLines, 
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-          const SizedBox(height: 10),
-          Stack(
-            children: [
-              Row(
-                children: [
-                  Flexible(
-                    flex: 2,
-                    child: RichText(
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      text: TextSpan(
-                        style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 12,
-                            color: textColor),
-                        children: [
-                          const TextSpan(
-                              text: 'By ',
-                              style: TextStyle(fontWeight: FontWeight.normal)),
-                          TextSpan(
-                              text: authorName,
-                              style: const TextStyle(fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // UPDATED DIVIDER TO MATCH LAYOUT 3
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 8.0),
-                    width: 32, // Changed from 24 to 32
-                    height: 1,
-                    color: isDark ? Colors.grey[600] : Colors.grey[400], // Updated Color to match Layout 3
-                  ),
-                  Flexible(
-                    flex: 2,
-                    child: _buildTimeText(isDark, fontSize: 10),
-                  ),
-                  const SizedBox(width: 32),
-                ],
-              ),
-              Positioned(
-                right: 0,
-                top: -2,
-                child: InkWell(
-                  onTap: _handleBookmarkToggle,
-                  child: Icon(
-                    widget.isBookmarked
-                        ? Icons.bookmark
-                        : Icons.bookmark_border,
-                    color: widget.isBookmarked
-                        ? _stabiloGreen
-                        : iconColor,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-
     return Column(
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: widget.imageOnLeft 
-              ? [imageWidget, const SizedBox(width: 12), textWidget]
-              : [textWidget, const SizedBox(width: 12), imageWidget],
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Text Section (left side)
+              if (!widget.imageOnLeft) 
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Top: Category
+                      _buildRectangularCategory(isDark),
+                      const SizedBox(height: 6),
+                      // Middle: Title (flexible to fill space)
+                      Expanded(
+                        child: _buildTitle(
+                          isDark,
+                          maxLines: widget.titleMaxLines ?? 3,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Bottom: Author, Date, Bookmark
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            flex: 2,
+                            child: RichText(
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              text: TextSpan(
+                                style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 11,
+                                    color: textColor),
+                                children: [
+                                  const TextSpan(
+                                      text: 'By ',
+                                      style: TextStyle(fontWeight: FontWeight.normal)),
+                                  TextSpan(
+                                      text: authorName,
+                                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 6.0),
+                            width: 24,
+                            height: 1,
+                            color: isDark ? Colors.grey[600] : Colors.grey[400],
+                          ),
+                          Flexible(
+                            flex: 2,
+                            child: _buildTimeText(isDark, fontSize: 10),
+                          ),
+                          const SizedBox(width: 8),
+                          InkWell(
+                            onTap: _handleBookmarkToggle,
+                            child: Icon(
+                              widget.isBookmarked
+                                  ? Icons.bookmark
+                                  : Icons.bookmark_border,
+                              color: widget.isBookmarked
+                                  ? _stabiloGreen
+                                  : iconColor,
+                              size: 18,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              
+              const SizedBox(width: 12),
+              
+              // Image Section (right side or left based on imageOnLeft)
+              Expanded(
+                flex: 1,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: _buildImage(heroTag, isDark, fit: BoxFit.cover),
+                ),
+              ),
+              
+              // Text Section (right side when imageOnLeft is true)
+              if (widget.imageOnLeft) ...[
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Top: Category
+                      _buildRectangularCategory(isDark),
+                      const SizedBox(height: 6),
+                      // Middle: Title (flexible to fill space)
+                      Expanded(
+                        child: _buildTitle(
+                          isDark,
+                          maxLines: widget.titleMaxLines ?? 3,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Bottom: Author, Date, Bookmark
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            flex: 2,
+                            child: RichText(
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              text: TextSpan(
+                                style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 11,
+                                    color: textColor),
+                                children: [
+                                  const TextSpan(
+                                      text: 'By ',
+                                      style: TextStyle(fontWeight: FontWeight.normal)),
+                                  TextSpan(
+                                      text: authorName,
+                                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 6.0),
+                            width: 24,
+                            height: 1,
+                            color: isDark ? Colors.grey[600] : Colors.grey[400],
+                          ),
+                          Flexible(
+                            flex: 2,
+                            child: _buildTimeText(isDark, fontSize: 10),
+                          ),
+                          const SizedBox(width: 8),
+                          InkWell(
+                            onTap: _handleBookmarkToggle,
+                            child: Icon(
+                              widget.isBookmarked
+                                  ? Icons.bookmark
+                                  : Icons.bookmark_border,
+                              color: widget.isBookmarked
+                                  ? _stabiloGreen
+                                  : iconColor,
+                              size: 18,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
         const SizedBox(height: 16),
         Divider(
@@ -815,159 +895,139 @@ class _ArticleCardState extends State<ArticleCard> {
     final String authorName = (widget.article.author != null && widget.article.author!.isNotEmpty)
         ? widget.article.author!.replaceAll(RegExp(r' ?/ ?'), ' / ')
         : 'Unknown';
+    
+    // Fixed colors - always white text on black background
+    const Color bgColor = Colors.black;
+    const Color titleColor = Colors.white;
+    final Color textColor = Colors.grey[400]!;
+    const Color iconColor = Colors.white70;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final double screenWidth = constraints.maxWidth;
-        final double imageHeight = screenWidth * 0.9; // Lebih lebar ke bawah dari 16:9, mendekati 1:0.7
-
-        return Stack(
-          children: [
-            // Fullscreen image
-            SizedBox(
-              width: double.infinity,
-              height: imageHeight,
-              child: _buildImage(heroTag, isDark, useHero: false, fit: BoxFit.cover),
-            ),
-            // Category label at top left
-            Positioned(
-              top: 16,
-              left: 16,
-              child: _buildRectangularCategory(isDark),
-            ),
-            // Text overlay at bottom with shadow
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.7),
-                      Colors.black.withOpacity(0.9),
-                    ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Image only (no overlays)
+        AspectRatio(
+          aspectRatio: 16 / 9,
+          child: _buildImage(heroTag, isDark, useHero: false, fit: BoxFit.cover),
+        ),
+        
+        // Text content with black background
+        Container(
+          width: double.infinity,
+          color: bgColor,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Category - above title
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: const BoxDecoration(color: _stabiloGreen),
+                child: Text(
+                  widget.article.category.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Inter',
                   ),
                 ),
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title with shadow
-                    Text(
-                      widget.article.title?.trim() ?? 'Untitled',
-                      style: TextStyle(
-                        fontFamily: 'CrimsonPro',
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        height: 1.3,
-                        shadows: [
-                          Shadow(
-                            offset: const Offset(0, 2),
-                            blurRadius: 8,
-                            color: Colors.black.withOpacity(0.8),
-                          ),
-                          Shadow(
-                            offset: const Offset(0, 1),
-                            blurRadius: 4,
-                            color: Colors.black.withOpacity(0.6),
-                          ),
-                        ],
-                      ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    // Description with shadow
-                    if (widget.article.description != null && widget.article.description!.isNotEmpty)
-                      Text(
-                        widget.article.description!.trim(),
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 14,
-                          color: Colors.white.withOpacity(0.9),
-                          height: 1.4,
-                          shadows: [
-                            Shadow(
-                              offset: const Offset(0, 1),
-                              blurRadius: 4,
-                              color: Colors.black.withOpacity(0.7),
-                            ),
-                          ],
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    const SizedBox(height: 12),
-                    // Author and date with shadow
-                    Row(
+              ),
+              
+              const SizedBox(height: 10),
+              
+              // Title - white
+              Text(
+                widget.article.title?.trim() ?? 'Untitled',
+                style: const TextStyle(
+                  fontFamily: 'CrimsonPro',
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: titleColor,
+                  height: 1.25,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+              
+              // Description (optional)
+              if (widget.article.description != null && widget.article.description!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  widget.article.description!.trim(),
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    color: textColor,
+                    height: 1.4,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+              
+              const SizedBox(height: 12),
+              
+              // Author, Date, and Bookmark row
+              Row(
+                children: [
+                  Expanded(
+                    child: Row(
                       children: [
-                        Flexible(
-                          child: RichText(
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            text: TextSpan(
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 12,
-                                color: Colors.white.withOpacity(0.9),
-                                shadows: [
-                                  Shadow(
-                                    offset: const Offset(0, 1),
-                                    blurRadius: 3,
-                                    color: Colors.black.withOpacity(0.7),
-                                  ),
-                                ],
-                              ),
-                              children: [
-                                const TextSpan(
-                                  text: 'By ',
-                                  style: TextStyle(fontWeight: FontWeight.normal),
-                                ),
-                                TextSpan(
-                                  text: authorName,
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ],
+                        RichText(
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          text: TextSpan(
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 11,
+                              color: textColor,
                             ),
+                            children: [
+                              const TextSpan(
+                                text: 'By ',
+                                style: TextStyle(fontWeight: FontWeight.normal),
+                              ),
+                              TextSpan(
+                                text: authorName,
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
+                            ],
                           ),
                         ),
                         Container(
                           margin: const EdgeInsets.symmetric(horizontal: 8.0),
                           height: 1,
-                          width: 32,
-                          color: Colors.white.withOpacity(0.5),
+                          width: 24,
+                          color: Colors.grey[600],
                         ),
                         Text(
                           _formatDate(widget.article.publishedAt),
                           style: TextStyle(
                             fontFamily: 'Inter',
-                            fontSize: 12,
-                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 11,
+                            color: textColor,
                             fontWeight: FontWeight.w500,
-                            shadows: [
-                              Shadow(
-                                offset: const Offset(0, 1),
-                                blurRadius: 3,
-                                color: Colors.black.withOpacity(0.7),
-                              ),
-                            ],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8), // <- Constant SizedBox di bagian paling bawah
-                  ],
-                ),
+                  ),
+                  // Bookmark icon at right
+                  InkWell(
+                    onTap: _handleBookmarkToggle,
+                    child: Icon(
+                      widget.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                      color: widget.isBookmarked ? _stabiloGreen : iconColor,
+                      size: 20,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        );
-      },
+            ],
+          ),
+        ),
+      ],
     );
   }
 

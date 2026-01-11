@@ -29,7 +29,9 @@ import '../widgets/theme_toggle_button.dart';
 import '../repositories/article_repository.dart';
 import 'search_screen.dart';
 import 'notifications_screen.dart';
-import 'shorts_player_screen.dart'; 
+import 'shorts_player_screen.dart';
+import 'settings_screen.dart';
+import 'feedback_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final List<Article> bookmarkedArticles;
@@ -1217,11 +1219,13 @@ class _HomeScreenState extends State<HomeScreen>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.zero,
       ),
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header area with SafeArea only at top
+          SafeArea(
+            bottom: false,
+            child: Padding(
               padding: const EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 16.0), 
               child: Text(
                 'Semua Kategori',
@@ -1233,50 +1237,161 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
             ),
-            Divider(
-              height: 1,
-              thickness: 1,
-              color: isDark ? Colors.grey[800] : Colors.grey[300],
-            ),
-            Expanded(
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                itemCount: _allCategories.length, 
-                itemBuilder: (context, index) {
-                  final category = _allCategories[index];
-                  final categoryCode = category['category'];
-                  final categoryTitle = category['title'];
+          ),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: isDark ? Colors.grey[800] : Colors.grey[300],
+          ),
+          // Category list
+          Expanded(
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              itemCount: _allCategories.length, 
+              itemBuilder: (context, index) {
+                final category = _allCategories[index];
+                final categoryCode = category['category'];
+                final categoryTitle = category['title'];
 
-                  return Column(
-                    children: [
-                      ListTile(
-                        title: Text(
-                          categoryTitle,
-                          style: TextStyle(
-                            color: isDark ? Colors.white : Colors.black,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500, 
-                          ),
+                return Column(
+                  children: [
+                    ListTile(
+                      title: Text(
+                        categoryTitle,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500, 
                         ),
-                        onTap: () {
-                          Provider.of<ArticleProvider>(context, listen: false)
-                              .changeCategory(categoryCode);
-                          Navigator.of(context).pop();
-                        },
                       ),
-                      DottedDivider(
-                        color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
-                        height: 1,
-                        indent: 16.0, 
-                        endIndent: 16.0, 
-                      ),
-                    ],
+                      onTap: () {
+                        Provider.of<ArticleProvider>(context, listen: false)
+                            .changeCategory(categoryCode);
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                    DottedDivider(
+                      color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                      height: 1,
+                      indent: 16.0, 
+                      endIndent: 16.0, 
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          // Settings Button - Always visible at bottom
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF5F5F5),
+              border: Border(
+                top: BorderSide(
+                  color: isDark ? Colors.grey[700]! : Colors.grey[400]!,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCCFF00).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.settings,
+                    color: isDark ? const Color(0xFFCCFF00) : Colors.black,
+                    size: 24,
+                  ),
+                ),
+                title: Text(
+                  'Pengaturan',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                subtitle: Text(
+                  'Notifikasi, tampilan, dan lainnya',
+                  style: TextStyle(
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+                trailing: Icon(
+                  Icons.chevron_right,
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
                   );
                 },
               ),
             ),
-          ],
-        ),
+          ),
+          // Feedback Button
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF5F5F5),
+            ),
+            child: SafeArea(
+              top: false,
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.feedback_outlined,
+                    color: isDark ? Colors.blue[300] : Colors.blue,
+                    size: 24,
+                  ),
+                ),
+                title: Text(
+                  'Kirim Feedback',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                subtitle: Text(
+                  'Bantu kami meningkatkan aplikasi',
+                  style: TextStyle(
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+                trailing: Icon(
+                  Icons.chevron_right,
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const FeedbackScreen(),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2138,7 +2253,7 @@ class _HomeScreenState extends State<HomeScreen>
                    // Artikel Utama (Layout 1) - Index 0 dari batch saat ini
                   if (displayArticles.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 0),
                       child: ArticleCard(
                         article: displayArticles[0],
                         isBookmarked: _allBookmarkedArticles.any((b) => b.id == displayArticles[0].id),
@@ -2156,7 +2271,7 @@ class _HomeScreenState extends State<HomeScreen>
                   // Grid 2 Columns x 2 Rows (Layout Default)
                   if (displayArticles.length > 1)
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
                       child: GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),

@@ -21,6 +21,8 @@ import 'search_focus_screen.dart';
 // 💡 --- AWAL TAMBAHAN ---
 import 'news_screen.dart';
 import 'today_screen.dart';
+import 'settings_screen.dart';
+import 'feedback_screen.dart';
 // 💡 --- AKHIR TAMBAHAN ---
 
 class SearchScreen extends StatefulWidget {
@@ -580,8 +582,13 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
                       children: [
                         _buildNavigationItem("NEWS", isDark),
                         Divider(color: Colors.grey[700], height: 0.5, indent: 24, endIndent: 24),
-                        _buildNavigationItem("TODAY", isDark),
+                        _buildNavigationItem("SETTINGS", isDark),
                         Divider(color: Colors.grey[700], height: 0.5, indent: 24, endIndent: 24),
+                        _buildNavigationItem("FEEDBACK", isDark),
+                        Divider(color: Colors.grey[700], height: 0.5, indent: 24, endIndent: 24),
+                        // TODAY temporarily hidden
+                        // _buildNavigationItem("TODAY", isDark),
+                        // Divider(color: Colors.grey[700], height: 0.5, indent: 24, endIndent: 24),
                         // _buildNavigationItem("LISTEN", isDark),
                         // Divider(color: Colors.grey[700], height: 0.5, indent: 24, endIndent: 24),
                       ],
@@ -622,7 +629,21 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
                 ),
               ),
             );
-          } 
+          }
+          else if (title == "SETTINGS") {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const SettingsScreen(),
+              ),
+            );
+          }
+          else if (title == "FEEDBACK") {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const FeedbackScreen(),
+              ),
+            );
+          }
           else {
             print("$title tapped");
           }

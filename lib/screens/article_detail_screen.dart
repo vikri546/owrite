@@ -34,6 +34,7 @@ import '../widgets/snackbar_toggle.dart';
 import 'login_screen.dart';
 import 'quick_screen.dart';
 import 'in_app_browser_screen.dart';
+import '../services/reading_tracker_service.dart';
 
 class ArticleDetailScreen extends StatefulWidget {
   final Article article;
@@ -71,6 +72,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
 
   final HistoryService _historyService = HistoryService();
   final AuthService _authService = AuthService();
+  final ReadingTrackerService _readingTracker = ReadingTrackerService();
   bool _isLoggedIn = false;
 
   AudioPlayerService get _audioService => AudioPlayerService.instance;
@@ -159,6 +161,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
       _fadeController.forward();
       _slideController.forward();
     });
+    
+    // Start reading tracker
+    _readingTracker.startReadingArticle(widget.article);
   }
 
   // --- PERBAIKAN UTAMA ADA DI SINI ---
@@ -258,6 +263,17 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
   @override
   void dispose() {
     debugPrint("🗑️ Disposing ArticleDetailScreen");
+    
+    // Calculate scroll percentage for reading tracker
+    double scrollPercentage = 0.0;
+    if (_scrollController.hasClients && _scrollController.position.maxScrollExtent > 0) {
+      scrollPercentage = _scrollController.offset / _scrollController.position.maxScrollExtent;
+      scrollPercentage = scrollPercentage.clamp(0.0, 1.0);
+    }
+    
+    // End reading tracking with scroll percentage
+    _readingTracker.endReadingArticle(widget.article, scrollPercentage);
+    
     _scrollController.removeListener(_scrollListener);
     _headerAnimController.dispose();
     _bottomBarAnimController.dispose();
@@ -1019,7 +1035,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
               ),
               const SizedBox(height: 24),
               const Text(
-                'Buat akun untuk menyimpan artikel ini',
+                'Belum bisa untuk menyimpan artikel ini',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 24,
@@ -1027,31 +1043,31 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen>
                 ),
               ),
               const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const LoginScreen()),
-                  ).then((_) => _checkLoginStatus());
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: customGreen,
-                  foregroundColor: Colors.black,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text(
-                  'Lanjutkan',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              // ElevatedButton(
+              //   onPressed: () {
+              //     Navigator.pop(context);
+              //     Navigator.push(
+              //       context,
+              //       MaterialPageRoute(
+              //           builder: (context) => const LoginScreen()),
+              //     ).then((_) => _checkLoginStatus());
+              //   },
+              //   style: ElevatedButton.styleFrom(
+              //     backgroundColor: customGreen,
+              //     foregroundColor: Colors.black,
+              //     minimumSize: const Size(double.infinity, 50),
+              //     shape: RoundedRectangleBorder(
+              //       borderRadius: BorderRadius.circular(8),
+              //     ),
+              //   ),
+              //   child: const Text(
+              //     'Lanjutkan',
+              //     style: TextStyle(
+              //       fontSize: 16,
+              //       fontWeight: FontWeight.bold,
+              //     ),
+              //   ),
+              // ),
             ],
           ),
         );
