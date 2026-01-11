@@ -1,10 +1,10 @@
-# OWrite - News Reader App
+# owrite - News Reader App
 
 <p align="center">
   <img src="assets/images/icon-app.png" alt="OWrite Logo" width="120"/>
 </p>
 
-A modern, feature-rich news reader application built with Flutter. OWrite provides a seamless reading experience with AI-powered features, personalization options, and cross-platform support.
+A modern, feature-rich news reader application built with Flutter. owrite provides a seamless reading experience with AI-powered features, personalization options, and cross-platform support.
 
 ## 📱 Features
 
