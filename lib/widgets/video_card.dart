@@ -298,7 +298,7 @@ class VideoCard extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
-                                      'VIDEO',
+                                      _isShorts(video) ? 'SHORTS' : 'VIDEO',
                                       style: TextStyle(
                                         fontSize: 9,
                                         fontWeight: FontWeight.w900,
@@ -560,6 +560,30 @@ class VideoCard extends StatelessWidget {
       return '$months bulan lalu';
     } else {
       return DateFormat('d MMM yyyy').format(date);
+    }
+  }
+
+  bool _isShorts(Video video) {
+    if (video.duration.isEmpty) return false;
+
+    try {
+      final parts =
+          video.duration.split(':').map((e) => int.tryParse(e) ?? 0).toList();
+      int seconds = 0;
+      if (parts.length == 2) {
+        seconds = parts[0] * 60 + parts[1];
+      } else if (parts.length == 3) {
+        seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+      }
+
+      final titleLower = video.title.toLowerCase();
+      final byDuration = seconds > 0 && seconds < 180; // < 3 menit
+      final byTitle =
+          titleLower.contains('#shorts') || titleLower.contains('shorts ');
+
+      return byDuration || byTitle;
+    } catch (_) {
+      return false;
     }
   }
 }

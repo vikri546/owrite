@@ -35,8 +35,15 @@ class WatchScreen extends StatefulWidget {
   State<WatchScreen> createState() => _WatchScreenState();
 }
 
+enum WatchFilter {
+  all,        // Shorts + Video
+  shortsOnly, // Hanya konten pendek (< 3 menit / bertag shorts)
+  videosOnly, // Hanya video >= 3 menit
+}
+
 class _WatchScreenState extends State<WatchScreen> {
   bool _loadingMore = false;
+  WatchFilter _currentFilter = WatchFilter.all;
 
   @override
   void initState() {
@@ -74,6 +81,18 @@ class _WatchScreenState extends State<WatchScreen> {
     return 0;
   }
 
+  /// Menentukan apakah sebuah video dianggap "Shorts"
+  bool _isShorts(Video video) {
+    final seconds = _parseDurationToSeconds(video.duration);
+    final titleLower = video.title.toLowerCase();
+
+    final byDuration = seconds > 0 && seconds < 180; // < 3 menit
+    final byTitle =
+        titleLower.contains('#shorts') || titleLower.contains('shorts ');
+
+    return byDuration || byTitle;
+  }
+
   Future<void> _openVideo(Video video) async {
     if (video.id.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -96,6 +115,93 @@ class _WatchScreenState extends State<WatchScreen> {
     );
   }
 
+  void _openFilterSheet(bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF181818) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Filter konten',
+                      style: TextStyle(
+                        fontFamily: 'Arimo',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close,
+                          color: isDark ? Colors.white70 : Colors.black54),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              ListTile(
+                leading: Radio<WatchFilter>(
+                  value: WatchFilter.all,
+                  groupValue: _currentFilter,
+                  onChanged: (val) {
+                    setState(() => _currentFilter = WatchFilter.all);
+                    Navigator.pop(context);
+                  },
+                ),
+                title: const Text('Shorts dan Video'),
+                onTap: () {
+                  setState(() => _currentFilter = WatchFilter.all);
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: Radio<WatchFilter>(
+                  value: WatchFilter.shortsOnly,
+                  groupValue: _currentFilter,
+                  onChanged: (val) {
+                    setState(() => _currentFilter = WatchFilter.shortsOnly);
+                    Navigator.pop(context);
+                  },
+                ),
+                title: const Text('Hanya Shorts'),
+                onTap: () {
+                  setState(() => _currentFilter = WatchFilter.shortsOnly);
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: Radio<WatchFilter>(
+                  value: WatchFilter.videosOnly,
+                  groupValue: _currentFilter,
+                  onChanged: (val) {
+                    setState(() => _currentFilter = WatchFilter.videosOnly);
+                    Navigator.pop(context);
+                  },
+                ),
+                title: const Text('Hanya Video'),
+                onTap: () {
+                  setState(() => _currentFilter = WatchFilter.videosOnly);
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -114,13 +220,20 @@ class _WatchScreenState extends State<WatchScreen> {
             final allVideos = videoProvider.videos;
 
             // --- LOGIKA FILTER UTAMA ---
-            // Hanya ambil video yang durasinya > 180 detik (3 menit)
-            // Dan HAPUS yang mengandung kata 'shorts' di title (jaga-jaga)
-            final List<Video> filteredVideos = allVideos.where((v) {
-              final seconds = _parseDurationToSeconds(v.duration);
-              final isShortsTitle = v.title.toLowerCase().contains('shorts');
-              return seconds > 180 && !isShortsTitle;
-            }).toList();
+            // Gunakan filter berdasarkan pilihan user (Shorts / Video / Keduanya).
+            List<Video> filteredVideos;
+            switch (_currentFilter) {
+              case WatchFilter.shortsOnly:
+                filteredVideos = allVideos.where(_isShorts).toList();
+                break;
+              case WatchFilter.videosOnly:
+                filteredVideos = allVideos.where((v) => !_isShorts(v)).toList();
+                break;
+              case WatchFilter.all:
+              default:
+                filteredVideos = List<Video>.from(allVideos);
+                break;
+            }
 
             if (status == VideoLoadingStatus.loading && allVideos.isEmpty) {
               return _buildLoadingState(isDark);
@@ -192,15 +305,26 @@ class _WatchScreenState extends State<WatchScreen> {
                                 ),
                               ],
                             ),
-                            // --- TOMBOL MASUK KE WISHLIST ---
-                            IconButton(
-                              onPressed: _openWishlistScreen,
-                              icon: Container(
-                                child: Icon(
-                                  Icons.bookmarks_outlined,
-                                  color: isDark ? accentColor : Colors.black,
+                            // --- TOMBOL FILTER + WISHLIST ---
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  tooltip: 'Filter shorts / video',
+                                  onPressed: () => _openFilterSheet(isDark),
+                                  icon: Icon(
+                                    Icons.filter_list,
+                                    color: isDark ? accentColor : Colors.black87,
+                                  ),
                                 ),
-                              ),
+                                IconButton(
+                                  onPressed: _openWishlistScreen,
+                                  icon: Icon(
+                                    Icons.bookmarks_outlined,
+                                    color: isDark ? accentColor : Colors.black,
+                                  ),
+                                ),
+                              ],
                             )
                           ],
                         ),

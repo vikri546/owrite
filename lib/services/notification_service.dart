@@ -35,15 +35,19 @@ class NotificationService {
       onDidReceiveLocalNotification: null,
     );
     
-    // Provide Linux settings to avoid runtime error on Linux target
+    // Linux settings (supported oleh plugin, tapi sebagian API
+    // seperti getNotificationAppLaunchDetails belum diimplementasikan
+    // di semua platform desktop, jadi nanti kita guard pemanggilannya).
     const linuxInit = LinuxInitializationSettings(
       defaultActionName: 'Open',
     );
+
     const initializationSettings = InitializationSettings(
       android: androidInit,
       iOS: iosInit,
       linux: linuxInit,
     );
+
     await _fln.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: _handleNotificationResponse,
@@ -52,15 +56,34 @@ class NotificationService {
     // Create notification channels (Android only)
     await _createNotificationChannels();
     
-    // Check if app was launched from notification
-    final details = await _fln.getNotificationAppLaunchDetails();
-    if (details?.didNotificationLaunchApp ?? false) {
-      if (_onNotificationTap != null) {
-        final notificationResponse = details!.notificationResponse;
-        if (notificationResponse != null && notificationResponse.payload != null) {
-          _onNotificationTap!(notificationResponse.payload);
+    // Check if app was launched from notification.
+    // API ini belum diimplementasikan di semua platform (contoh: sebagian
+    // build Linux/desktop), sehingga bisa melempar UnimplementedError.
+    // Kita guard dengan platform-check + try/catch supaya tidak crash.
+    try {
+      if (!kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.android ||
+           defaultTargetPlatform == TargetPlatform.iOS ||
+           defaultTargetPlatform == TargetPlatform.macOS)) {
+        final details = await _fln.getNotificationAppLaunchDetails();
+        if (details?.didNotificationLaunchApp ?? false) {
+          if (_onNotificationTap != null) {
+            final notificationResponse = details!.notificationResponse;
+            if (notificationResponse != null &&
+                notificationResponse.payload != null) {
+              _onNotificationTap!(notificationResponse.payload);
+            }
+          }
         }
       }
+    } on UnimplementedError catch (e) {
+      // Di platform yang belum mendukung (misal Linux tertentu),
+      // abaikan saja error ini agar fitur notifikasi lainnya tetap jalan.
+      debugPrint(
+          'getNotificationAppLaunchDetails not implemented on this platform: $e');
+    } catch (e) {
+      // Jangan gagal total hanya karena pengecekan launch details bermasalah
+      debugPrint('Error while checking notification launch details: $e');
     }
 
     _initialized = true;

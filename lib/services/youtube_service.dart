@@ -28,7 +28,7 @@ class YouTubeService {
       return envKey;
     }
     // Fallback ke hardcoded key (untuk backward compatibility)
-    return 'AIzaSyCNRZlFah7RUIBMB7ngHY926q_c6kfZGOc';
+    return 'AIzaSyBs7LwI1rq23TMbp1f2dnDd8dBLAQGPGjw';
   }
   static const String _baseUrl = 'https://www.googleapis.com/youtube/v3';
 
