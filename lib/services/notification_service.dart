@@ -256,8 +256,16 @@ class NotificationService {
       sound: const RawResourceAndroidNotificationSound('owrite_sound_notification'),
       enableVibration: true,
       color: color,
-      icon: '@mipmap/ic_launcher', 
+      icon: '@mipmap/ic_launcher',
       styleInformation: BigTextStyleInformation(body),
+      // Heads-up notification settings
+      fullScreenIntent: true,
+      ticker: title,
+      visibility: NotificationVisibility.public,
+      category: AndroidNotificationCategory.social,
+      // Ensure notification shows even when app is in foreground
+      showWhen: true,
+      autoCancel: true,
     );
 
     const iosDetails = DarwinNotificationDetails(
