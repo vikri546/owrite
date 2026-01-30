@@ -62,7 +62,7 @@ class VideoProvider with ChangeNotifier {
         // Untuk error lain, tampilkan pesan yang lebih user-friendly
         final errorStr = e.toString();
         if (errorStr.contains('403') || errorStr.toLowerCase().contains('quota')) {
-          _errorMessage = 'Waduh, limit batas harian kuota kamu sudah habis, kembali lagi besok yaa. 😊';
+          _errorMessage = 'Belum bisa memuat video. Silakan coba lagi nanti.';
         } else {
           _errorMessage = 'Gagal memuat video. Silakan coba lagi nanti.';
         }
@@ -105,7 +105,7 @@ class VideoProvider with ChangeNotifier {
       } else {
         final errorStr = e.toString();
         if (errorStr.contains('403') || errorStr.toLowerCase().contains('quota')) {
-          _errorMessage = 'Waduh, limit batas harian kuota kamu sudah habis, kembali lagi besok yaa. 😊';
+          _errorMessage = 'Belum bisa memuat video trending. Silakan coba lagi nanti.';
         } else {
           _errorMessage = 'Gagal memuat video trending. Silakan coba lagi nanti.';
         }
@@ -148,7 +148,7 @@ class VideoProvider with ChangeNotifier {
       } else {
         final errorStr = e.toString();
         if (errorStr.contains('403') || errorStr.toLowerCase().contains('quota')) {
-          _errorMessage = 'Waduh, limit batas harian kuota kamu sudah habis, kembali lagi besok yaa. 😊';
+          _errorMessage = 'Belum bisa mencari video. Silakan coba lagi nanti.';
         } else {
           _errorMessage = 'Gagal mencari video. Silakan coba lagi nanti.';
         }

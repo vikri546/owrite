@@ -231,7 +231,7 @@ Copy ke **EmailJS → Email Templates → Create New Template → Edit Content (
                     </td>
                     <td align="right">
                       <p style="margin: 0; color: #666666; font-size: 12px;">
-                        Owrite v6.1.2
+                        Owrite v7.1.2
                       </p>
                     </td>
                   </tr>

@@ -35,15 +35,10 @@ class WatchScreen extends StatefulWidget {
   State<WatchScreen> createState() => _WatchScreenState();
 }
 
-enum WatchFilter {
-  all,        // Shorts + Video
-  shortsOnly, // Hanya konten pendek (< 3 menit / bertag shorts)
-  videosOnly, // Hanya video >= 3 menit
-}
-
 class _WatchScreenState extends State<WatchScreen> {
   bool _loadingMore = false;
-  WatchFilter _currentFilter = WatchFilter.all;
+  // Flag untuk auto-load ketika halaman pertama hanya berisi shorts
+  bool _autoLoadingLongVideos = false;
 
   @override
   void initState() {
@@ -115,93 +110,6 @@ class _WatchScreenState extends State<WatchScreen> {
     );
   }
 
-  void _openFilterSheet(bool isDark) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: isDark ? const Color(0xFF181818) : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Filter konten',
-                      style: TextStyle(
-                        fontFamily: 'Arimo',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: isDark ? Colors.white : Colors.black87,
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.close,
-                          color: isDark ? Colors.white70 : Colors.black54),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-              ListTile(
-                leading: Radio<WatchFilter>(
-                  value: WatchFilter.all,
-                  groupValue: _currentFilter,
-                  onChanged: (val) {
-                    setState(() => _currentFilter = WatchFilter.all);
-                    Navigator.pop(context);
-                  },
-                ),
-                title: const Text('Shorts dan Video'),
-                onTap: () {
-                  setState(() => _currentFilter = WatchFilter.all);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: Radio<WatchFilter>(
-                  value: WatchFilter.shortsOnly,
-                  groupValue: _currentFilter,
-                  onChanged: (val) {
-                    setState(() => _currentFilter = WatchFilter.shortsOnly);
-                    Navigator.pop(context);
-                  },
-                ),
-                title: const Text('Hanya Shorts'),
-                onTap: () {
-                  setState(() => _currentFilter = WatchFilter.shortsOnly);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: Radio<WatchFilter>(
-                  value: WatchFilter.videosOnly,
-                  groupValue: _currentFilter,
-                  onChanged: (val) {
-                    setState(() => _currentFilter = WatchFilter.videosOnly);
-                    Navigator.pop(context);
-                  },
-                ),
-                title: const Text('Hanya Video'),
-                onTap: () {
-                  setState(() => _currentFilter = WatchFilter.videosOnly);
-                  Navigator.pop(context);
-                },
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -220,20 +128,9 @@ class _WatchScreenState extends State<WatchScreen> {
             final allVideos = videoProvider.videos;
 
             // --- LOGIKA FILTER UTAMA ---
-            // Gunakan filter berdasarkan pilihan user (Shorts / Video / Keduanya).
-            List<Video> filteredVideos;
-            switch (_currentFilter) {
-              case WatchFilter.shortsOnly:
-                filteredVideos = allVideos.where(_isShorts).toList();
-                break;
-              case WatchFilter.videosOnly:
-                filteredVideos = allVideos.where((v) => !_isShorts(v)).toList();
-                break;
-              case WatchFilter.all:
-              default:
-                filteredVideos = List<Video>.from(allVideos);
-                break;
-            }
+            // Hanya tampilkan VIDEO (>= 3 menit), sembunyikan semua Shorts.
+            final List<Video> filteredVideos =
+                allVideos.where((v) => !_isShorts(v)).toList();
 
             if (status == VideoLoadingStatus.loading && allVideos.isEmpty) {
               return _buildLoadingState(isDark);
@@ -247,8 +144,35 @@ class _WatchScreenState extends State<WatchScreen> {
               );
             }
 
-            // Show empty state if no videos after filtering
-            if (filteredVideos.isEmpty && status != VideoLoadingStatus.loading) {
+            // Jika saat ini tidak ada VIDEO (>= 3 menit) yang lolos filter,
+            // tetapi sudah ada data mentah dari API, coba auto-load halaman
+            // berikutnya sekali lagi sebelum menampilkan empty state.
+            if (filteredVideos.isEmpty &&
+                allVideos.isNotEmpty &&
+                status != VideoLoadingStatus.loading &&
+                status != VideoLoadingStatus.loadingMore &&
+                status != VideoLoadingStatus.noMoreData &&
+                !_autoLoadingLongVideos) {
+              _autoLoadingLongVideos = true;
+              // Jalankan setelah frame ini supaya tidak memicu setState di tengah build.
+              WidgetsBinding.instance.addPostFrameCallback((_) async {
+                if (!mounted) return;
+                await Provider.of<VideoProvider>(context, listen: false)
+                    .loadMoreVideos();
+                if (!mounted) return;
+                setState(() {
+                  _autoLoadingLongVideos = false;
+                });
+              });
+              return _buildLoadingState(isDark);
+            }
+
+            // Setelah mencoba auto-load (atau memang benar-benar tidak ada data),
+            // tampilkan empty state bila tetap tidak ada video yang lolos filter.
+            if (filteredVideos.isEmpty &&
+                status != VideoLoadingStatus.loading &&
+                status != VideoLoadingStatus.loadingMore &&
+                !_autoLoadingLongVideos) {
               return _buildEmptyState(isDark, accentColor);
             }
 
@@ -305,27 +229,14 @@ class _WatchScreenState extends State<WatchScreen> {
                                 ),
                               ],
                             ),
-                            // --- TOMBOL FILTER + WISHLIST ---
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  tooltip: 'Filter shorts / video',
-                                  onPressed: () => _openFilterSheet(isDark),
-                                  icon: Icon(
-                                    Icons.filter_list,
-                                    color: isDark ? accentColor : Colors.black87,
-                                  ),
+                            // --- TOMBOL WISHLIST SAJA (FILTER DIHAPUS) ---
+                            IconButton(
+                              onPressed: _openWishlistScreen,
+                              icon: Icon(
+                                  Icons.bookmarks_outlined,
+                                  color: isDark ? accentColor : Colors.black,
                                 ),
-                                IconButton(
-                                  onPressed: _openWishlistScreen,
-                                  icon: Icon(
-                                    Icons.bookmarks_outlined,
-                                    color: isDark ? accentColor : Colors.black,
-                                  ),
-                                ),
-                              ],
-                            )
+                              ),
                           ],
                         ),
                       );

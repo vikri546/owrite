@@ -1,4 +1,4 @@
-package com.medias.owrite_one
+package com.medias.owrite
 
 import io.flutter.embedding.android.FlutterActivity
 

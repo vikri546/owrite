@@ -1,362 +1,280 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/material.dart'; // Added for Color
+import 'package:flutter/material.dart';
 
 class NotificationService {
+  // Singleton pattern
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FlutterLocalNotificationsPlugin _fln =
-      FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _fln = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
   
-  // Callback untuk notification tap
+  // Callback untuk tap notifikasi
   static Function(String?)? _onNotificationTap;
 
+  /// Inisialisasi Service
   Future<void> init({Function(String?)? onTap}) async {
     if (_initialized) {
       if (onTap != null) _onNotificationTap = onTap;
       return;
     }
-    
+
     _onNotificationTap = onTap;
 
+    // 1. Setup Android Settings
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    
-    // iOS initialization settings
+
+    // 2. Setup iOS Settings
     const iosInit = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
-      onDidReceiveLocalNotification: null,
-    );
-    
-    // Linux settings (supported oleh plugin, tapi sebagian API
-    // seperti getNotificationAppLaunchDetails belum diimplementasikan
-    // di semua platform desktop, jadi nanti kita guard pemanggilannya).
-    const linuxInit = LinuxInitializationSettings(
-      defaultActionName: 'Open',
     );
 
-    const initializationSettings = InitializationSettings(
+    // 3. Setup Linux Settings
+    const linuxInit = LinuxInitializationSettings(defaultActionName: 'Open');
+
+    final initializationSettings = InitializationSettings(
       android: androidInit,
       iOS: iosInit,
       linux: linuxInit,
     );
 
+    // 4. Initialize Plugin
     await _fln.initialize(
       initializationSettings,
-      onDidReceiveNotificationResponse: _handleNotificationResponse,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        if (_onNotificationTap != null) {
+          _onNotificationTap!(response.payload);
+        }
+      },
     );
 
-    // Create notification channels (Android only)
+    // 5. Create Channels
+    // Hapus channel lama (opsional, untuk kebersihan)
+    await _deleteOldChannels(); 
+    // Buat channel baru dengan ID baru agar setting suara tereset
     await _createNotificationChannels();
-    
-    // Check if app was launched from notification.
-    // API ini belum diimplementasikan di semua platform (contoh: sebagian
-    // build Linux/desktop), sehingga bisa melempar UnimplementedError.
-    // Kita guard dengan platform-check + try/catch supaya tidak crash.
-    try {
-      if (!kIsWeb &&
-          (defaultTargetPlatform == TargetPlatform.android ||
-           defaultTargetPlatform == TargetPlatform.iOS ||
-           defaultTargetPlatform == TargetPlatform.macOS)) {
-        final details = await _fln.getNotificationAppLaunchDetails();
-        if (details?.didNotificationLaunchApp ?? false) {
-          if (_onNotificationTap != null) {
-            final notificationResponse = details!.notificationResponse;
-            if (notificationResponse != null &&
-                notificationResponse.payload != null) {
-              _onNotificationTap!(notificationResponse.payload);
-            }
-          }
-        }
-      }
-    } on UnimplementedError catch (e) {
-      // Di platform yang belum mendukung (misal Linux tertentu),
-      // abaikan saja error ini agar fitur notifikasi lainnya tetap jalan.
-      debugPrint(
-          'getNotificationAppLaunchDetails not implemented on this platform: $e');
-    } catch (e) {
-      // Jangan gagal total hanya karena pengecekan launch details bermasalah
-      debugPrint('Error while checking notification launch details: $e');
-    }
+
+    // 6. Request Permission
+    await requestPermissionIfNeeded();
 
     _initialized = true;
+    debugPrint("NotificationService initialized successfully");
   }
 
-  // Static handler for notification response
-  static void _handleNotificationResponse(NotificationResponse response) {
-    if (_onNotificationTap != null) {
-      _onNotificationTap!(response.payload);
-    }
-  }
-
-  Future<void> _createNotificationChannels() async {
+  /// Menghapus channel versi lama (opsional)
+  Future<void> _deleteOldChannels() async {
     final androidImpl = _fln.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     if (androidImpl != null) {
-      // Breaking News Channel - HIGHEST VOLUME
-      await androidImpl.createNotificationChannel(
+      await androidImpl.deleteNotificationChannel('breaking_news');
+      await androidImpl.deleteNotificationChannel('trending_articles');
+      await androidImpl.deleteNotificationChannel('recommendations');
+    }
+  }
+
+  /// Membuat Channel Notifikasi (Android)
+  Future<void> _createNotificationChannels() async {
+    final androidImpl = _fln.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+
+    if (androidImpl != null) {
+      // NOTE: Kita gunakan '_v2' pada ID channel untuk memaksa Android 
+      // membaca ulang konfigurasi suara jika sebelumnya user menginstall app 
+      // saat konfigurasi masih salah/silent.
+      final List<AndroidNotificationChannel> channels = [
         AndroidNotificationChannel(
-          'breaking_news',
+          'breaking_news_v2', // ID BARU
           'Breaking News',
           description: 'Important breaking news notifications',
-          importance: Importance.max,
+          importance: Importance.max, 
           playSound: true,
-          sound: const RawResourceAndroidNotificationSound(
-              'owrite_sound_notification'),
+          // WAJIB: File 'owrite_sound_notification.mp3' harus ada di folder:
+          // android/app/src/main/res/raw/
+          sound: const RawResourceAndroidNotificationSound('owrite_sound_notification'),
           enableVibration: true,
           vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]),
           showBadge: true,
           enableLights: true,
           ledColor: const Color(0xFFE74C3C),
         ),
-      );
-
-      // Trending Articles Channel - HIGH VOLUME
-      await androidImpl.createNotificationChannel(
         AndroidNotificationChannel(
-          'trending_articles',
+          'trending_articles_v2', // ID BARU
           'Trending Articles',
           description: 'Trending and popular articles',
-          importance: Importance.high,
+          importance: Importance.high, 
           playSound: true,
-          sound: const RawResourceAndroidNotificationSound(
-              'owrite_sound_notification'),
+          sound: const RawResourceAndroidNotificationSound('owrite_sound_notification'),
           enableVibration: true,
           vibrationPattern: Int64List.fromList([0, 800, 400, 800]),
           showBadge: true,
           enableLights: true,
           ledColor: const Color(0xFF3498DB),
         ),
-      );
-
-      // Recommendations Channel - MEDIUM VOLUME
-      await androidImpl.createNotificationChannel(
         AndroidNotificationChannel(
-          'recommendations',
+          'recommendations_v2', // ID BARU
           'Article Recommendations',
           description: 'Personalized article recommendations',
-          importance: Importance.defaultImportance,
+          importance: Importance.defaultImportance, 
           playSound: true,
-          sound: const RawResourceAndroidNotificationSound(
-              'owrite_sound_notification'),
+          sound: const RawResourceAndroidNotificationSound('owrite_sound_notification'),
           enableVibration: true,
           vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
           showBadge: true,
           enableLights: true,
           ledColor: const Color(0xFF2ECC71),
         ),
-      );
+      ];
+
+      for (var channel in channels) {
+        await androidImpl.createNotificationChannel(channel);
+      }
     }
   }
 
   Future<bool> requestPermissionIfNeeded() async {
-    final prefs = await SharedPreferences.getInstance();
-    final asked = prefs.getBool('notif_perm_asked') ?? false;
-    if (asked) return true;
-    await prefs.setBool('notif_perm_asked', true);
-    // On Android 13+, permission is handled by plugin's resolvePermission
-    final androidImpl = _fln.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    if (androidImpl != null) {
-      final granted =
-          await androidImpl.requestNotificationsPermission() ?? true;
-      return granted;
+    if (Platform.isAndroid) {
+      final androidImpl = _fln.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      
+      final bool? granted = await androidImpl?.requestNotificationsPermission();
+      return granted ?? false;
     }
-    return true;
+    return true; 
   }
 
-  Future<void> showBreakingNewsNotification(String title, String body,
-      {String? payload}) async {
-    await init();
-    final android = AndroidNotificationDetails(
-      'breaking_news',
-      'Breaking News',
-      channelDescription: 'Important breaking news notifications',
-      importance: Importance.max,
-      priority: Priority.max,
-      playSound: true,
-      sound:
-          const RawResourceAndroidNotificationSound('owrite_sound_notification'),
-      enableVibration: true,
-      vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]),
-      color: const Color(0xFFE74C3C),
-      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
-      styleInformation: BigTextStyleInformation(body),
-      showWhen: true,
-      when: DateTime.now().millisecondsSinceEpoch,
-      usesChronometer: false,
-      chronometerCountDown: false,
-      showProgress: false,
-      maxProgress: 0,
-      progress: 0,
-      indeterminate: false,
-      onlyAlertOnce: false,
-      autoCancel: true,
-      ongoing: false,
-      silent: false,
-      ticker: 'Breaking News: $title',
-    );
-    
-    // iOS notification details
-    const ios = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-    
-    final details = NotificationDetails(android: android, iOS: ios);
-    await _fln.show(
-        DateTime.now().millisecondsSinceEpoch % 100000, title, body, details,
-        payload: payload);
+  // --- COMPATIBILITY METHODS ---
+  Future<void> showBreakingNewsNotification(String title, String body, {String? payload}) async {
+    await showNotificationByCategory(title, body, 'breaking_news', payload: payload);
   }
 
-  Future<void> showTrendingNotification(String title, String body,
-      {String? payload}) async {
-    await init();
-    final android = AndroidNotificationDetails(
-      'trending_articles',
-      'Trending Articles',
-      channelDescription: 'Trending and popular articles',
-      importance: Importance.high,
-      priority: Priority.high,
-      playSound: true,
-      sound:
-          const RawResourceAndroidNotificationSound('owrite_sound_notification'),
-      enableVibration: true,
-      vibrationPattern: Int64List.fromList([0, 800, 400, 800]),
-      color: const Color(0xFF3498DB),
-      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
-      styleInformation: BigTextStyleInformation(body),
-      showWhen: true,
-      when: DateTime.now().millisecondsSinceEpoch,
-      usesChronometer: false,
-      chronometerCountDown: false,
-      showProgress: false,
-      maxProgress: 0,
-      progress: 0,
-      indeterminate: false,
-      onlyAlertOnce: false,
-      autoCancel: true,
-      ongoing: false,
-      silent: false,
-      ticker: 'Trending: $title',
-    );
-    
-    // iOS notification details
-    const ios = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-    
-    final details = NotificationDetails(android: android, iOS: ios);
-    await _fln.show(DateTime.now().millisecondsSinceEpoch % 100000 + 1, title,
-        body, details,
-        payload: payload);
+  Future<void> showTrendingNotification(String title, String body, {String? payload}) async {
+    await showNotificationByCategory(title, body, 'trending_articles', payload: payload);
   }
 
-  Future<void> showRecommendationNotification(String title, String body,
-      {String? payload}) async {
-    await init();
-    final android = AndroidNotificationDetails(
-      'recommendations',
-      'Article Recommendations',
-      channelDescription: 'Personalized article recommendations',
-      importance: Importance.defaultImportance,
-      priority: Priority.defaultPriority,
-      playSound: true,
-      sound:
-          const RawResourceAndroidNotificationSound('owrite_sound_notification'),
-      enableVibration: true,
-      vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
-      color: const Color(0xFF2ECC71),
-      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
-      styleInformation: BigTextStyleInformation(body),
-      showWhen: true,
-      when: DateTime.now().millisecondsSinceEpoch,
-      usesChronometer: false,
-      chronometerCountDown: false,
-      showProgress: false,
-      maxProgress: 0,
-      progress: 0,
-      indeterminate: false,
-      onlyAlertOnce: false,
-      autoCancel: true,
-      ongoing: false,
-      silent: false,
-      ticker: 'Recommendation: $title',
-    );
-    
-    // iOS notification details
-    const ios = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-    
-    final details = NotificationDetails(android: android, iOS: ios);
-    await _fln.show(DateTime.now().millisecondsSinceEpoch % 100000 + 2, title,
-        body, details,
-        payload: payload);
+  Future<void> showRecommendationNotification(String title, String body, {String? payload}) async {
+    await showNotificationByCategory(title, body, 'recommendations', payload: payload);
   }
 
-  Future<void> showInstant(String title, String body, {String? payload}) async {
-    await showRecommendationNotification(title, body, payload: payload);
-  }
-
-  Future<void> pruneOlderThanDays(int days) async {
-    // Plugin does not store history; we can cancel all scheduled beyond retention if used; kept as placeholder.
-  }
-
-  // Get notification channels
-  Future<List<AndroidNotificationChannel>> getNotificationChannels() async {
-    final androidImpl = _fln.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    if (androidImpl != null) {
-      return await androidImpl.getNotificationChannels() ?? [];
-    }
-    return [];
-  }
-
-  // Cancel all notifications
   Future<void> cancelAllNotifications() async {
     await _fln.cancelAll();
   }
+  // ----------------------------------------------------
 
-  // Cancel specific notification
-  Future<void> cancelNotification(int id) async {
-    await _fln.cancel(id);
-  }
+  /// Logika Utama: Menampilkan Notifikasi berdasarkan Kategori
+  Future<void> showNotificationByCategory(
+      String title, String body, String category,
+      {String? payload}) async {
+    
+    if (!_initialized) await init();
 
-  // Method to ensure maximum volume for notifications
-  Future<void> ensureMaximumVolume() async {
-    final androidImpl = _fln.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    if (androidImpl != null) {
-      // Update existing channels with maximum importance
-      final channels = await getNotificationChannels();
-      for (final channel in channels) {
-        await androidImpl.deleteNotificationChannel(channel.id);
+    final cat = category.toLowerCase().trim();
+    debugPrint("Triggering notification for category: $cat");
+
+    try {
+      switch (cat) {
+        case 'breaking_news':
+        case 'breaking':
+        case 'news':
+        case 'high':
+          await _showSpecificNotification(
+            id: 100, 
+            channelId: 'breaking_news_v2', // Gunakan ID V2
+            channelName: 'Breaking News',
+            title: title,
+            body: body,
+            color: const Color(0xFFE74C3C),
+            payload: payload,
+            importance: Importance.max,
+            priority: Priority.max,
+          );
+          break;
+
+        case 'trending_articles':
+        case 'trending':
+        case 'popular':
+          await _showSpecificNotification(
+            id: 200, 
+            channelId: 'trending_articles_v2', // Gunakan ID V2
+            channelName: 'Trending Articles',
+            title: title,
+            body: body,
+            color: const Color(0xFF3498DB),
+            payload: payload,
+            importance: Importance.high,
+            priority: Priority.high,
+          );
+          break;
+
+        default:
+          await _showSpecificNotification(
+            id: 300, 
+            channelId: 'recommendations_v2', // Gunakan ID V2
+            channelName: 'Article Recommendations',
+            title: title,
+            body: body,
+            color: const Color(0xFF2ECC71),
+            payload: payload,
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+          );
+          break;
       }
-
-      // Recreate channels with maximum volume settings
-      await _createNotificationChannels();
+    } catch (e) {
+      debugPrint("ERROR SHOWING NOTIFICATION: $e");
     }
   }
 
-  // Method to test notification with maximum volume
-  Future<void> testMaximumVolumeNotification() async {
-    await ensureMaximumVolume();
+  Future<void> _showSpecificNotification({
+    required int id,
+    required String channelId,
+    required String channelName,
+    required String title,
+    required String body,
+    required Color color,
+    required Importance importance,
+    required Priority priority,
+    String? payload,
+  }) async {
+    
+    final uniqueId = id + (DateTime.now().millisecondsSinceEpoch % 1000);
+
+    final androidDetails = AndroidNotificationDetails(
+      channelId,
+      channelName,
+      importance: importance,
+      priority: priority,
+      playSound: true,
+      // Pastikan nama file SAMA PERSIS dengan di folder raw (tanpa ekstensi)
+      sound: const RawResourceAndroidNotificationSound('owrite_sound_notification'),
+      enableVibration: true,
+      color: color,
+      icon: '@mipmap/ic_launcher', 
+      styleInformation: BigTextStyleInformation(body),
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+    await _fln.show(uniqueId, title, body, details, payload: payload);
+  }
+
+  Future<void> testNotification() async {
     await showBreakingNewsNotification(
-      'Test Volume',
-      'This is a test notification with maximum volume settings',
+      'Test Suara Notifikasi', 
+      'Test notifikasi diaktifkan.', 
     );
   }
 }

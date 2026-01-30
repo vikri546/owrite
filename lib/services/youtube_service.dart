@@ -85,7 +85,7 @@ class YouTubeService {
           if (errorMessage.toLowerCase().contains('quota') || 
               errorMessage.toLowerCase().contains('exceeded')) {
             throw YouTubeQuotaExceededException(
-              'Waduh, limit batas harian kuota kamu sudah habis, kembali lagi besok yaa. 😊'
+              'Belum bisa memuat video. Silakan coba lagi nanti.'
             );
           }
           throw Exception('Gagal memuat video: $errorMessage');
@@ -135,7 +135,7 @@ class YouTubeService {
           if (errorMessage.toLowerCase().contains('quota') || 
               errorMessage.toLowerCase().contains('exceeded')) {
             throw YouTubeQuotaExceededException(
-              'Waduh, limit batas harian kuota kamu sudah habis, kembali lagi besok yaa. 😊'
+              'Belum bisa memuat video. Silakan coba lagi nanti.'
             );
           }
           throw Exception('Gagal memuat detail video: $errorMessage');
@@ -200,7 +200,7 @@ class YouTubeService {
           if (errorMessage.toLowerCase().contains('quota') || 
               errorMessage.toLowerCase().contains('exceeded')) {
             throw YouTubeQuotaExceededException(
-              'Waduh, limit batas harian kuota kamu sudah habis, kembali lagi besok yaa. 😊'
+              'Belum bisa memuat video trending. Silakan coba lagi nanti.'
             );
           }
           throw Exception('Gagal memuat video trending: $errorMessage');
