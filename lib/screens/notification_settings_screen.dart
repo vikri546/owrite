@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/notification_scheduler.dart';
+import '../services/notification_service.dart';
 import '../providers/theme_provider.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
@@ -34,6 +35,7 @@ class _NotificationSettingsScreenState
   static const Color _stabiloGreen = Color(0xFFAEEE00);
 
   final NotificationScheduler _scheduler = NotificationScheduler();
+  final NotificationService _notificationService = NotificationService();
 
   @override
   void initState() {
@@ -522,6 +524,128 @@ class _NotificationSettingsScreenState
                 ),
               ),
             ),
+
+          const SizedBox(height: 40),
+
+          // BAGIAN TEST NOTIFIKASI
+          Text(
+            'TEST NOTIFIKASI',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.grey[500] : Colors.grey[600],
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Gunakan tombol di bawah untuk menguji notifikasi pada perangkat Anda.',
+            style: TextStyle(
+              fontSize: 13,
+              color: isDark ? Colors.grey[400] : Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Tombol Test Notifikasi
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: Icon(
+                    Icons.notifications_active,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                  label: Text(
+                    'Test Notifikasi',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  onPressed: () async {
+                    await _notificationService.testNotification();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Row(
+                            children: [
+                              Icon(Icons.check_circle, color: Colors.white),
+                              SizedBox(width: 12),
+                              Text('Notifikasi test dikirim'),
+                            ],
+                          ),
+                          backgroundColor: Colors.green[600],
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: BorderSide(
+                      color: isDark ? Colors.grey[600]! : Colors.grey[400]!,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Tombol Test Volume Maksimum
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.volume_up, color: Colors.black),
+                  label: const Text(
+                    'Test Volume Maksimum',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onPressed: () async {
+                    await _notificationService.testMaximumVolumeNotification();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Row(
+                            children: [
+                              Icon(Icons.volume_up, color: Colors.white),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text('Notifikasi volume maksimum dikirim. Channel notifikasi telah di-reset.'),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: Colors.blue[600],
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: _stabiloGreen,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
 
           const SizedBox(height: 40),
         ],

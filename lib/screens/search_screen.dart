@@ -16,13 +16,13 @@ import '../utils/auth_service.dart';
 import '../screens/login_screen.dart';
 import '../providers/theme_provider.dart';
 
-// Tambahkan import search_focus_screen.dart
-import 'search_focus_screen.dart';
 // 💡 --- AWAL TAMBAHAN ---
+import 'search_focus_screen.dart';
 import 'news_screen.dart';
 import 'today_screen.dart';
 import 'settings_screen.dart';
 import 'feedback_screen.dart';
+import 'contact_screen.dart';
 // 💡 --- AKHIR TAMBAHAN ---
 
 class SearchScreen extends StatefulWidget {
@@ -586,6 +586,8 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
                         Divider(color: Colors.grey[700], height: 0.5, indent: 24, endIndent: 24),
                         _buildNavigationItem("FEEDBACK", isDark),
                         Divider(color: Colors.grey[700], height: 0.5, indent: 24, endIndent: 24),
+                        _buildNavigationItem("OWRITE MEDIA", isDark),
+                        Divider(color: Colors.grey[700], height: 0.5, indent: 24, endIndent: 24),
                         // TODAY temporarily hidden
                         // _buildNavigationItem("TODAY", isDark),
                         // Divider(color: Colors.grey[700], height: 0.5, indent: 24, endIndent: 24),
@@ -641,6 +643,13 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => const FeedbackScreen(),
+              ),
+            );
+          }
+          else if (title == "OWRITE MEDIA") {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const ContactScreen(),
               ),
             );
           }

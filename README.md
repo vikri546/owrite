@@ -306,4 +306,4 @@ For support or inquiries, please use the in-app feedback feature or contact the 
 
 ---
 
-**Version:** 7.1.3+9
+**Version:** 1.0.3+1

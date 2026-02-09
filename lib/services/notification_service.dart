@@ -3,8 +3,8 @@ import 'dart:typed_data';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class NotificationService {
   // Singleton pattern
@@ -13,6 +13,7 @@ class NotificationService {
   NotificationService._internal();
 
   final FlutterLocalNotificationsPlugin _fln = FlutterLocalNotificationsPlugin();
+  final AudioPlayer _audioPlayer = AudioPlayer();
   bool _initialized = false;
   
   // Callback untuk tap notifikasi
@@ -277,12 +278,74 @@ class NotificationService {
     final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
     await _fln.show(uniqueId, title, body, details, payload: payload);
+    
+    // Play notification sound for non-Android platforms (Linux, Web, Desktop)
+    // On Android, the sound is handled by the notification channel
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      await playNotificationSound();
+    }
+  }
+
+  /// Play notification sound for cross-platform support
+  /// On Android/iOS, sound is handled by the notification system
+  /// On Linux/Web/Desktop, we use audioplayers
+  Future<void> playNotificationSound() async {
+    try {
+      await _audioPlayer.stop(); // Stop any previous sound
+      await _audioPlayer.setSource(AssetSource('sounds/owrite_sound_notification.wav'));
+      await _audioPlayer.resume();
+      debugPrint("Notification sound played successfully");
+    } catch (e) {
+      debugPrint("Error playing notification sound: $e");
+    }
   }
 
   Future<void> testNotification() async {
     await showBreakingNewsNotification(
       'Test Suara Notifikasi', 
       'Test notifikasi diaktifkan.', 
+    );
+  }
+
+  // Get notification channels for debugging
+  Future<List<AndroidNotificationChannel>> getNotificationChannels() async {
+    final androidImpl = _fln.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (androidImpl != null) {
+      return await androidImpl.getNotificationChannels() ?? [];
+    }
+    return [];
+  }
+
+  // Cancel specific notification by ID
+  Future<void> cancelNotification(int id) async {
+    await _fln.cancel(id);
+  }
+
+  // Method to ensure maximum volume for notifications
+  // This deletes and recreates channels with maximum importance
+  Future<void> ensureMaximumVolume() async {
+    final androidImpl = _fln.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (androidImpl != null) {
+      // Delete existing channels
+      final channels = await getNotificationChannels();
+      for (final channel in channels) {
+        await androidImpl.deleteNotificationChannel(channel.id);
+      }
+
+      // Recreate channels with maximum volume settings
+      await _createNotificationChannels();
+      debugPrint("Notification channels recreated with maximum volume settings");
+    }
+  }
+
+  // Method to test notification with maximum volume
+  Future<void> testMaximumVolumeNotification() async {
+    await ensureMaximumVolume();
+    await showBreakingNewsNotification(
+      'Test Volume Maksimum',
+      'Notifikasi ini menggunakan pengaturan volume maksimum. Jika Anda tidak mendengar suara, periksa pengaturan volume perangkat.',
     );
   }
 }

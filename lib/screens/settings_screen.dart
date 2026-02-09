@@ -361,7 +361,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         Text('Owrite', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18)),
                         const SizedBox(height: 4),
-                        Text('Versi 7.1.3', style: TextStyle(color: subtitleColor, fontSize: 14)),
+                        Text('Versi 1.0.3', style: TextStyle(color: subtitleColor, fontSize: 14)),
                       ],
                     ),
                   ),
