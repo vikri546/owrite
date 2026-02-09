@@ -45,6 +45,25 @@
     },
     {
       "client_info": {
+        "mobilesdk_app_id": "1:431592300459:android:fb05d1f6f95da255f47cee",
+        "android_client_info": {
+          "package_name": "com.medias.owrite_news"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUu1SPTExQgaWW2fsuHVjJFkYBGhK-rgg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:431592300459:android:1ee9cac0ff6aad98f47cee",
         "android_client_info": {
           "package_name": "com.medias.owrite_one"
