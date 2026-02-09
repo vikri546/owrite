@@ -18,7 +18,7 @@ val keystoreProperties = Properties().apply {
 }
 
 android {
-    namespace = "com.medias.owrite"
+    namespace = "com.medias.owrite_news"
 
     // PERUBAHAN 1: Mengubah compileSdk menjadi 35
     compileSdk = 35
@@ -47,7 +47,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.medias.owrite"
+        applicationId = "com.medias.owrite_news"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 23
