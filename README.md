@@ -266,6 +266,134 @@ flutter build web --release
 
 ---
 
+## 🍎 iOS Build Tutorial
+
+This section provides a complete guide on how to build and deploy owrite for iOS.
+
+### Prerequisites
+
+| Requirement            | Details                                                   |
+| ---------------------- | --------------------------------------------------------- |
+| **macOS**              | Required for building iOS apps (Xcode only runs on macOS) |
+| **Xcode**              | Version 15.0 or higher, install from Mac App Store        |
+| **CocoaPods**          | Dependency manager for iOS native libraries               |
+| **Apple Developer ID** | Free for testing on simulator, paid ($99/year) for device |
+| **Flutter SDK**        | 3.6.0 or higher (same as Android)                         |
+
+### Step 1: Install CocoaPods
+
+```bash
+# Install CocoaPods (if not already installed)
+sudo gem install cocoapods
+
+# Or via Homebrew
+brew install cocoapods
+```
+
+### Step 2: Firebase iOS Setup
+
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Select your existing Firebase project (the one used for Android)
+3. Click **Add App** → Select **iOS**
+4. Enter the **Bundle ID**: `com.medias.owrite-news` (match your Xcode project)
+5. Download the generated `GoogleService-Info.plist`
+6. Place it in `ios/Runner/GoogleService-Info.plist`
+
+> ⚠️ **Important**: Without `GoogleService-Info.plist`, the app will crash on launch because Firebase is initialized in `AppDelegate.swift`.
+
+### Step 3: Install iOS Dependencies
+
+```bash
+# Navigate to the project root
+cd owrite
+
+# Get Flutter dependencies
+flutter pub get
+
+# Install iOS native dependencies
+cd ios
+pod install
+cd ..
+```
+
+> If `pod install` fails, try:
+>
+> ```bash
+> cd ios
+> pod repo update
+> pod install --repo-update
+> cd ..
+> ```
+
+### Step 4: Configure Code Signing (Xcode)
+
+1. Open `ios/Runner.xcworkspace` in Xcode:
+   ```bash
+   open ios/Runner.xcworkspace
+   ```
+2. Select the **Runner** project in the left sidebar
+3. Go to **Signing & Capabilities** tab
+4. Check **Automatically manage signing**
+5. Select your **Team** (your Apple Developer account)
+6. Xcode will auto-generate provisioning profiles
+
+### Step 5: Build & Run
+
+**Run on Simulator:**
+
+```bash
+# List available simulators
+flutter devices
+
+# Run on iOS Simulator
+flutter run -d "iPhone 16 Pro"
+```
+
+**Build for Device (Debug):**
+
+```bash
+flutter run -d <your-device-id>
+```
+
+**Build Release IPA:**
+
+```bash
+# Build release archive
+flutter build ios --release
+
+# Or build IPA directly
+flutter build ipa --release
+```
+
+### Step 6: App Store Submission (Optional)
+
+1. **Build Archive** in Xcode:
+   - Product → Archive
+2. **Upload to App Store Connect:**
+   - Window → Organizer → Distribute App
+   - Select **App Store Connect** → Upload
+3. **Submit for Review** in [App Store Connect](https://appstoreconnect.apple.com/)
+
+### iOS-Specific Notes
+
+- **Notifications**: iOS uses `UNUserNotificationCenter` instead of Android channels. Permission is requested at runtime.
+- **Background Fetch**: Configured via `UIBackgroundModes` in `Info.plist` (`fetch` + `remote-notification`).
+- **Location**: iOS requires usage description strings in `Info.plist`. These are already configured.
+- **Browser Chooser**: The Android intent-based browser chooser is not available on iOS. The app falls back to `url_launcher` (system default browser or in-app browser).
+- **TTS**: Flutter TTS works natively on iOS via AVSpeechSynthesizer.
+
+### Troubleshooting
+
+| Issue                                | Solution                                                                           |
+| ------------------------------------ | ---------------------------------------------------------------------------------- |
+| `pod install` fails                  | Run `pod repo update` then retry                                                   |
+| Signing error                        | Ensure Apple Developer account is added in Xcode → Preferences → Accounts          |
+| `GoogleService-Info.plist` not found | Download from Firebase Console and place in `ios/Runner/`                          |
+| Build fails on M1/M2 Mac             | Run `arch -x86_64 pod install` or install ffi: `sudo arch -x86_64 gem install ffi` |
+| Minimum deployment target error      | Open Xcode, set deployment target to iOS 13.0 or higher                            |
+
+---
+
 ## 🎨 Theming
 
 The app supports both light and dark themes with smooth transitions. Custom fonts are included:
@@ -286,10 +414,10 @@ The app supports both light and dark themes with smooth transitions. Custom font
 | Platform | Status    |
 | -------- | --------- |
 | Android  | Supported |
-| iOS      | Not Yet   |
+| iOS      | Supported |
 | Web      | Supported |
 | Windows  | Supported |
-| macOS    | Not Yet   |
+| macOS    | Planned   |
 | Linux    | Supported |
 
 ---
