@@ -434,4 +434,4 @@ For support or inquiries, please use the in-app feedback feature or contact the 
 
 ---
 
-**Version:** 1.0.3+1
+**Version:** 1.0.4+2
