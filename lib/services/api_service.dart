@@ -9,7 +9,7 @@ class ApiService {
   static const String _baseUrl = 'https://www.owrite.id/wp-json/wp/v2';
   static const String _apiKey = 'AIzaSyDa3Fo_obfSV_DTUo8OmaSUiR7U7KllYEs';
 
-  static const Map<String, int> _categoryNameToIdMap = {
+  static const Map<String, int?> _categoryNameToIdMap = {
     'HYPE': 16,
     'OLAHRAGA': 15,
     'EKBIS': 17,
@@ -19,6 +19,9 @@ class ApiService {
     'INTERNASIONAL': 13,
     'POLITIK': 530,
     'KESEHATAN': 725,
+    'HUKUM': 1532,
+    'WARGA SPILL': null,
+    'CARI TAHU': 1420,
   };
 
   final http.Client _client;
@@ -31,20 +34,28 @@ class ApiService {
     int pageSize = 100,
     bool forceRefresh = false,
   }) async {
+    if (categoryName != null &&
+        categoryName.toUpperCase() == 'WARGA SPILL') {
+      return getArticlesByTag(3415, page: page, pageSize: pageSize);
+    }
+
     final Map<String, String> queryParameters = {
       'page': page.toString(),
       'per_page': pageSize.toString(),
-      '_embed': '1', // Ini akan mengambil semua data embedded termasuk featured media
+      '_embed': '1',
       'orderby': 'date',
       'order': 'desc',
     };
 
     if (categoryName != null && categoryName.isNotEmpty) {
       final int? categoryId = _categoryNameToIdMap[categoryName.toUpperCase()];
-      if (categoryId != null) {
+      if (categoryId != null && categoryId > 0) {
         queryParameters['categories'] = categoryId.toString();
       } else {
-        print("Peringatan: ID Kategori untuk '$categoryName' tidak ditemukan.");
+        print(
+          "Peringatan: ID Kategori untuk '$categoryName' tidak ditemukan atau belum diset. "
+          "Pastikan _categoryNameToIdMap sudah diisi dengan ID kategori WordPress yang benar.",
+        );
       }
     }
 
@@ -79,8 +90,7 @@ class ApiService {
     int page = 1,
     int pageSize = 100,
   }) async {
-    // --- (PERBAIKAN LOGIKA) ---
-    // Buat queryParameters dasar
+    // Search Query Params
     final queryParameters = <String, dynamic>{
       'search': query,
       'per_page': pageSize.toString(),
@@ -88,25 +98,19 @@ class ApiService {
       '_embed': 'true',
     };
 
-    // --- LOGIKA BARU UNTUK SORTING (Perbaikan) ---
-    // sortBy akan berisi 'newest' atau 'oldest' dari aplikasi
+    // Sort Order
     if (sortBy == 'oldest') {
-      // Jika 'oldest', urutkan berdasarkan 'date' (tanggal) secara 'asc' (ascending/menaik)
       queryParameters['orderby'] = 'date';
       queryParameters['order'] = 'asc';
     } else {
-      // Jika 'newest' (atau default), urutkan berdasarkan 'date' (tanggal) secara 'desc' (descending/menurun)
       queryParameters['orderby'] = 'date';
       queryParameters['order'] = 'desc';
     }
-    // --- AKHIR LOGIKA SORTING ---
 
-    // --- TAMBAHAN: filter categoryIds jika ada ---
+    // Category Filter
     if (categoryIds != null && categoryIds.isNotEmpty) {
-      // WordPress expects a comma-separated string of category IDs
       queryParameters['categories'] = categoryIds.join(',');
     }
-    // --- AKHIR TAMBAHAN ---
 
     // Cast queryParameters to Map<String, String> for Uri usage
     final Map<String, String> stringQueryParameters = queryParameters.map((key, value) => MapEntry(key, value.toString()));
@@ -219,7 +223,7 @@ class ApiService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      // Ambil audio base64 dari response
+      // Extract Audio Base64
       final audio = data['candidates'][0]['content']['parts'][0]['inlineData']['data'];
       return audio;
     } else {

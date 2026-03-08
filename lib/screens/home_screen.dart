@@ -127,26 +127,32 @@ class _HomeScreenState extends State<HomeScreen>
   // ---------------------------------------
 
   final List<Map<String, dynamic>> _allCategories = [
-    {'title': 'Hype', 'category': 'HYPE'},
-    {'title': 'Olahraga', 'category': 'OLAHRAGA'},
+    {'title': 'Politik', 'category': 'POLITIK'},
+    {'title': 'Hukum', 'category': 'HUKUM'},
+    {'title': 'Warga Spill', 'category': 'WARGA SPILL'},
+    {'title': 'Cari Tahu', 'category': 'CARI TAHU'},
     {'title': 'Ekonomi Bisnis', 'category': 'EKBIS'},
-    {'title': 'Megapolitan', 'category': 'MEGAPOLITAN'},
-    {'title': 'Daerah', 'category': 'DAERAH'},
+    {'title': 'Hype', 'category': 'HYPE'},
     {'title': 'Nasional', 'category': 'NASIONAL'},
     {'title': 'Internasional', 'category': 'INTERNASIONAL'},
-    {'title': 'Politik', 'category': 'POLITIK'},
+    {'title': 'Megapolitan', 'category': 'MEGAPOLITAN'},
+    {'title': 'Daerah', 'category': 'DAERAH'},
+    {'title': 'Olahraga', 'category': 'OLAHRAGA'},
     {'title': 'Kesehatan', 'category': 'KESEHATAN'},
   ];
 
   final Map<String, String> _categoryTitles = {
-    'HYPE': 'Hype',
-    'OLAHRAGA': 'Olahraga',
+    'POLITIK': 'Politik',
+    'HUKUM': 'Hukum',
+    'WARGA SPILL': 'Warga Spill',
+    'CARI TAHU': 'Cari Tahu',
     'EKBIS': 'Ekonomi Bisnis',
-    'MEGAPOLITAN': 'Megapolitan',
-    'DAERAH': 'Daerah',
+    'HYPE': 'Hype',
     'NASIONAL': 'Nasional',
     'INTERNASIONAL': 'Internasional',
-    'POLITIK': 'Politik',
+    'MEGAPOLITAN': 'Megapolitan',
+    'DAERAH': 'Daerah',
+    'OLAHRAGA': 'Olahraga',
     'KESEHATAN': 'Kesehatan',
   };
 

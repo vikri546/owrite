@@ -7,7 +7,7 @@ import '../models/article.dart';
 import '../repositories/article_repository.dart';
 import 'notification_service.dart';
 
-/// Service untuk melacak perilaku membaca user dan trigger notifikasi otomatis
+/// Reading Behavior Tracker
 class ReadingTrackerService {
   static final ReadingTrackerService _instance = ReadingTrackerService._internal();
   factory ReadingTrackerService() => _instance;
@@ -16,20 +16,20 @@ class ReadingTrackerService {
   final NotificationService _notificationService = NotificationService();
   final ArticleRepository _articleRepository = ArticleRepository();
 
-  // Timer untuk delayed notifications
+  // Timers
   Timer? _bacaKembaliTimer;
   Timer? _recommendationTimer;
 
-  // Tracking state
+  // State Tracking
   Article? _lastPartialReadArticle;
   Article? _lastCompleteReadArticle;
   DateTime? _articleOpenTime;
   
-  // Delay times (in seconds)
+  // Delay Config
   static const int _bacaKembaliDelaySeconds = 180; // 3 minutes
   static const int _recommendationDelaySeconds = 120; // 2 minutes
 
-  // SharedPreferences keys from settings_screen.dart
+  // Notification Category Keys
   static const Map<String, String> _categoryKeys = {
     'berita_penting': 'notif_cat_berita_penting',
     'berita_terbaru': 'notif_cat_berita_terbaru',
@@ -41,13 +41,13 @@ class ReadingTrackerService {
     'artikel_24jam': 'notif_cat_artikel_24jam',
   };
 
-  /// Cek apakah notifikasi enabled secara global
+  /// Check Global Notification Status
   Future<bool> _areNotificationsEnabled() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool('notifications_enabled') ?? true;
   }
 
-  /// Cek apakah kategori notifikasi tertentu enabled
+  /// Check Category Status
   Future<bool> _isCategoryEnabled(String categoryKey) async {
     if (!await _areNotificationsEnabled()) return false;
     final prefs = await SharedPreferences.getInstance();
@@ -56,15 +56,14 @@ class ReadingTrackerService {
     return prefs.getBool(prefKey) ?? true;
   }
 
-  /// Track saat user mulai membaca artikel
+  /// Start Reading Tracking
   void startReadingArticle(Article article) {
     _articleOpenTime = DateTime.now();
     _cancelAllTimers();
     debugPrint('[ReadingTracker] Started reading: ${article.title}');
   }
 
-  /// Track saat user keluar dari artikel
-  /// scrollPercentage: 0.0 - 1.0 (0% - 100%)
+  /// End Reading Tracking
   Future<void> endReadingArticle(Article article, double scrollPercentage) async {
     final readingDuration = _articleOpenTime != null 
         ? DateTime.now().difference(_articleOpenTime!).inSeconds 
@@ -85,7 +84,7 @@ class ReadingTrackerService {
     _articleOpenTime = null;
   }
 
-  /// Track partial read untuk shorts
+  /// Shorts Partial View Tracking
   Future<void> trackPartialShortsView(int shortsId, String title) async {
     if (!await _isCategoryEnabled('shorts')) return;
     
@@ -99,7 +98,7 @@ class ReadingTrackerService {
     );
   }
 
-  /// Track video view completion
+  /// Video Completion Tracking
   Future<void> trackVideoCompletion(String videoId, String title, bool completed) async {
     if (!await _isCategoryEnabled('video')) return;
     
@@ -122,7 +121,7 @@ class ReadingTrackerService {
     }
   }
 
-  /// Schedule "Baca Kembali" notification
+  /// Schedule Read-Again Notification
   Future<void> _scheduleBackaKembaliNotification(Article article) async {
     if (!await _isCategoryEnabled('baca_kembali')) return;
     
@@ -137,7 +136,7 @@ class ReadingTrackerService {
     );
   }
 
-  /// Schedule recommendation notification after complete read
+  /// Schedule Post-Read Recommendation
   Future<void> _scheduleRecommendationNotification(Article article) async {
     _lastCompleteReadArticle = article;
     _recommendationTimer?.cancel();
@@ -150,7 +149,7 @@ class ReadingTrackerService {
     );
   }
 
-  /// Send "Baca Kembali" notification
+  /// Send Read-Again Notification
   Future<void> _sendBacaKembaliNotification() async {
     if (_lastPartialReadArticle == null) return;
     if (!await _isCategoryEnabled('baca_kembali')) return;
@@ -171,7 +170,7 @@ class ReadingTrackerService {
     _lastPartialReadArticle = null;
   }
 
-  /// Send recommendation notification (Headline/Berita Pilihan)
+  /// Send Article Recommendation
   Future<void> _sendRecommendationNotification() async {
     final headlineEnabled = await _isCategoryEnabled('headline');
     final beritaPilihanEnabled = await _isCategoryEnabled('berita_pilihan');
@@ -223,7 +222,7 @@ class ReadingTrackerService {
     _lastCompleteReadArticle = null;
   }
 
-  /// Send shorts notification
+  /// Send Shorts Notification
   Future<void> _sendShortsNotification(int shortsId, String title) async {
     if (!await _isCategoryEnabled('shorts')) return;
     
@@ -238,7 +237,7 @@ class ReadingTrackerService {
     debugPrint('[ReadingTracker] Sent shorts notification');
   }
 
-  /// Send video reminder notification
+  /// Send Video Reminder
   Future<void> _sendVideoReminderNotification(String videoId, String title) async {
     await _notificationService.showTrendingNotification(
       'Lanjutkan Menonton',
@@ -251,7 +250,7 @@ class ReadingTrackerService {
     debugPrint('[ReadingTracker] Sent video reminder notification');
   }
 
-  /// Send video recommendation notification
+  /// Send Video Recommendation
   Future<void> _sendVideoRecommendationNotification() async {
     if (!await _isCategoryEnabled('video')) return;
     
@@ -265,13 +264,13 @@ class ReadingTrackerService {
     debugPrint('[ReadingTracker] Sent video recommendation notification');
   }
 
-  /// Cancel all pending timers
+  /// Cancel Timers
   void _cancelAllTimers() {
     _bacaKembaliTimer?.cancel();
     _recommendationTimer?.cancel();
   }
 
-  /// Dispose service
+  /// Dispose
   void dispose() {
     _cancelAllTimers();
   }

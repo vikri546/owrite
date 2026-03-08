@@ -21,7 +21,7 @@ class SortFilterScreen extends StatefulWidget {
   final Set<String> initialCategories;
   final bool isDark;
 
-  static const Map<String, int> categoryMap = {
+  static const Map<String, int?> categoryMap = {
     'HYPE': 16,
     'OLAHRAGA': 15,
     'EKBIS': 17,
@@ -31,6 +31,9 @@ class SortFilterScreen extends StatefulWidget {
     'INTERNASIONAL': 13,
     'POLITIK': 530,
     'KESEHATAN': 725,
+    'HUKUM': 1532,
+    'WARGA SPILL': null,
+    'CARI TAHU': 1420,
   };
 
   static const List<Map<String, String>> sortOptions = [

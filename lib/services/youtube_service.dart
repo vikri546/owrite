@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/video.dart';
 
-// TAMBAHAN: Definisikan kelas VideoResult di sini (atau impor jika di file terpisah)
+// Video Result Model
 class VideoResult {
   final List<Video> videos;
   final String? nextPageToken;
@@ -11,7 +11,7 @@ class VideoResult {
   VideoResult({required this.videos, this.nextPageToken});
 }
 
-// Custom exception untuk error quota YouTube API
+// YouTube Quota Exception
 class YouTubeQuotaExceededException implements Exception {
   final String message;
   YouTubeQuotaExceededException(this.message);
@@ -21,13 +21,13 @@ class YouTubeQuotaExceededException implements Exception {
 }
 
 class YouTubeService {
-  // Gunakan environment variable dengan fallback ke hardcoded key
+  // API Key Config
   String get _apiKey {
     final envKey = dotenv.env['YOUTUBE_API_KEY'];
     if (envKey != null && envKey.isNotEmpty) {
       return envKey;
     }
-    // Fallback ke hardcoded key (untuk backward compatibility)
+    // Fallback Key
     return 'AIzaSyBs7LwI1rq23TMbp1f2dnDd8dBLAQGPGjw';
   }
   static const String _baseUrl = 'https://www.googleapis.com/youtube/v3';
@@ -36,16 +36,15 @@ class YouTubeService {
 
   YouTubeService({http.Client? client}) : _client = client ?? http.Client();
 
-  /// Mendapatkan video berdasarkan channel ID atau query pencarian
-  /// MODIFIKASI: Mengembalikan VideoResult (videos + nextPageToken)
+  /// Fetch Videos (Paginated)
   Future<VideoResult> getVideos({
     String? channelId,
     String? query,
     int maxResults = 20,
-    String? pageToken, // MODIFIKASI: Menerima pageToken
+    String? pageToken,
   }) async {
     try {
-      // 1. Search untuk mendapatkan video IDs
+      // 1. Search Video IDs
       final apiKey = _apiKey;
       if (apiKey.isEmpty) {
         throw Exception('YouTube API key is not configured. Please set YOUTUBE_API_KEY in .env file.');
@@ -56,7 +55,7 @@ class YouTubeService {
         'maxResults': maxResults.toString(),
         'key': apiKey,
         'type': 'video',
-        'order': 'date', // Urutkan berdasarkan tanggal terbaru
+        'order': 'date',
       };
 
       if (channelId != null) {
@@ -66,7 +65,6 @@ class YouTubeService {
         searchParams['q'] = query;
       }
       if (pageToken != null) {
-        // MODIFIKASI: Tambahkan pageToken ke request jika ada
         searchParams['pageToken'] = pageToken;
       }
 
@@ -81,7 +79,7 @@ class YouTubeService {
         final errorBody = json.decode(searchResponse.body);
         final errorMessage = errorBody['error']?['message'] ?? 'Unknown error';
         if (searchResponse.statusCode == 403) {
-          // Cek apakah error karena quota exceeded
+          // Quota Check
           if (errorMessage.toLowerCase().contains('quota') || 
               errorMessage.toLowerCase().contains('exceeded')) {
             throw YouTubeQuotaExceededException(
@@ -96,7 +94,7 @@ class YouTubeService {
       final searchData = json.decode(searchResponse.body);
       final items = searchData['items'] as List? ?? [];
 
-      // MODIFIKASI: Ambil nextPageToken dari respons
+      // Pagination Token
       final String? nextPageToken = searchData['nextPageToken'] as String?;
 
       if (items.isEmpty) {
@@ -113,7 +111,7 @@ class YouTubeService {
         return VideoResult(videos: [], nextPageToken: nextPageToken);
       }
 
-      // 3. Get video details (termasuk duration)
+      // 3. Fetch Video Details
       final detailsParams = {
         'part': 'snippet,contentDetails',
         'id': videoIds,
@@ -131,7 +129,7 @@ class YouTubeService {
         final errorBody = json.decode(detailsResponse.body);
         final errorMessage = errorBody['error']?['message'] ?? 'Unknown error';
         if (detailsResponse.statusCode == 403) {
-          // Cek apakah error karena quota exceeded
+          // Quota Check (Details)
           if (errorMessage.toLowerCase().contains('quota') || 
               errorMessage.toLowerCase().contains('exceeded')) {
             throw YouTubeQuotaExceededException(
@@ -146,12 +144,11 @@ class YouTubeService {
       final detailsData = json.decode(detailsResponse.body);
       final detailItems = detailsData['items'] as List? ?? [];
 
-      // 4. Parse menjadi Video objects
+      // 4. Parse Videos
       final videos = detailItems
           .map((item) => Video.fromYouTubeApi(item))
           .toList();
       
-      // MODIFIKASI: Kembalikan VideoResult
       return VideoResult(videos: videos, nextPageToken: nextPageToken);
 
     } catch (e) {
@@ -160,12 +157,11 @@ class YouTubeService {
     }
   }
 
-  /// Mendapatkan video trending (popular)
-  /// MODIFIKASI: Mengembalikan VideoResult (meskipun trending biasanya tidak dipaginasi seperti ini)
+  /// Fetch Trending Videos (Paginated)
   Future<VideoResult> getTrendingVideos({
     int maxResults = 20,
-    String regionCode = 'ID', // Indonesia
-    String? pageToken, // MODIFIKASI: Tambahkan pageToken
+    String regionCode = 'ID',
+    String? pageToken,
   }) async {
     try {
       final apiKey = _apiKey;
@@ -196,7 +192,7 @@ class YouTubeService {
         final errorBody = json.decode(response.body);
         final errorMessage = errorBody['error']?['message'] ?? 'Unknown error';
         if (response.statusCode == 403) {
-          // Cek apakah error karena quota exceeded
+          // Quota Check (Trending)
           if (errorMessage.toLowerCase().contains('quota') || 
               errorMessage.toLowerCase().contains('exceeded')) {
             throw YouTubeQuotaExceededException(
@@ -211,7 +207,7 @@ class YouTubeService {
       final data = json.decode(response.body);
       final items = data['items'] as List? ?? [];
       
-      // MODIFIKASI: Ambil nextPageToken
+      // Pagination Token
       final String? nextPageToken = data['nextPageToken'] as String?;
 
       final videos = items

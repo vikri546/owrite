@@ -1,55 +1,35 @@
-# owrite - News Reader App
-
 <p align="center">
-  <img src="assets/images/icon-app.png" alt="OWrite Logo" width="120"/>
+  <img src="assets/images/icon-app.png" alt="owrite" width="100"/>
 </p>
 
-A modern, feature-rich news reader application built with Flutter. owrite provides a seamless reading experience with AI-powered features, personalization options, and cross-platform support.
+<h1 align="center">owrite</h1>
 
-## 📱 Features
+<p align="center">
+  <strong>Modern news reader app built with Flutter</strong><br/>
+  AI-powered features · Cross-platform · Personalized experience
+</p>
 
-### Core Features
+<p align="center">
+  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-3.6.0+-02569B?logo=flutter&logoColor=white"/>
+  <img alt="Dart" src="https://img.shields.io/badge/Dart-3.6.0+-0175C2?logo=dart&logoColor=white"/>
+  <img alt="Platform" src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web%20%7C%20Desktop-brightgreen"/>
+  <img alt="License" src="https://img.shields.io/badge/License-Proprietary-red"/>
+</p>
 
-- **News Feed** - Browse latest news articles with infinite scroll
-- **Article Reader** - Rich article viewing with HTML rendering support
-- **Search** - Full-text search with category filtering
-- **Bookmarks** - Save articles with custom groups/folders
-- **Reading History** - Track your reading activity
-- **Video Content** - Watch news videos and YouTube integration
-- **Shorts Player** - Short-form video content support
+---
 
-### AI-Powered Features
+## ✨ Features
 
-- **Gemini AI Integration** - AI-powered content summarization and assistance
-- **Text-to-Speech (TTS)** - Listen to articles with voice synthesis
-
-### Personalization
-
-- **Theme Support** - Light and dark mode with custom transitions
-- **Multiple Font Families** - DMSans, CrimsonPro, Inter, Arimo, Domine, SourceSerif4, Bricolage Grotesque, Anton
-- **Display Settings** - Customize font size, line height, and reading preferences
-- **Language Support** - Multi-language localization
-
-### Notifications
-
-- **Push Notifications** - Stay updated with breaking news
-- **Background Notifications** - Receive updates even when app is closed
-- **Notification Scheduler** - Customizable notification preferences
-- **Local Notifications** - In-app notification management
-
-### User Features
-
-- **User Authentication** - Login/Register with multiple methods (Native, Web, Cookie-based)
-- **User Profiles** - Manage account and preferences
-- **Subscription** - Premium content access
-- **Feedback System** - Submit feedback with weekly limits
-
-### Connectivity
-
-- **Offline Support** - Cached content for offline reading
-- **Location Services** - Location-based news and weather
-- **Share Integration** - Share articles across apps
-- **In-App Browser** - Open external links within the app
+| Category            | Features                                                                  |
+| ------------------- | ------------------------------------------------------------------------- |
+| **News Feed**       | Infinite scroll · Category filtering · Full-text search · Reading history |
+| **Article Reader**  | HTML rendering · Text-to-Speech · AI summarization (Gemini)               |
+| **Video**           | YouTube integration · Shorts player · Trending videos                     |
+| **Bookmarks**       | Save articles · Custom groups/folders                                     |
+| **Notifications**   | Push notifications · Background updates · Scheduled alerts                |
+| **Personalization** | Light/Dark theme · 8 font families · Display settings · Multi-language    |
+| **Connectivity**    | Offline cache · Location services · Share integration · In-app browser    |
+| **Authentication**  | Login/Register · Cookie-based auth · User profiles · Subscription         |
 
 ---
 
@@ -57,107 +37,140 @@ A modern, feature-rich news reader application built with Flutter. owrite provid
 
 ### Framework
 
-| Technology | Version | Description                 |
+| Technology | Version | Purpose                     |
 | ---------- | ------- | --------------------------- |
 | Flutter    | 3.6.0+  | Cross-platform UI framework |
 | Dart SDK   | ^3.6.0  | Programming language        |
 
-### Core Dependencies
+### Dependencies
 
-#### State Management & Architecture
+<details>
+<summary><strong>State Management & Architecture</strong></summary>
 
-| Package    | Version | Purpose                   |
-| ---------- | ------- | ------------------------- |
-| `provider` | ^6.0.5  | State management solution |
+| Package    | Version | Purpose          |
+| ---------- | ------- | ---------------- |
+| `provider` | ^6.0.5  | State management |
 
-#### Networking & API
+</details>
 
-| Package              | Version | Purpose                                |
-| -------------------- | ------- | -------------------------------------- |
-| `http`               | ^0.13.5 | HTTP client for API calls              |
-| `dio`                | ^5.4.0  | Advanced HTTP client with interceptors |
-| `cookie_jar`         | ^4.0.8  | Cookie persistence                     |
-| `dio_cookie_manager` | ^3.1.1  | Cookie management for Dio              |
+<details>
+<summary><strong>Networking & API</strong></summary>
 
-#### UI & Styling
+| Package              | Version | Purpose                         |
+| -------------------- | ------- | ------------------------------- |
+| `http`               | ^0.13.5 | HTTP client                     |
+| `dio`                | ^5.4.0  | Advanced HTTP with interceptors |
+| `cookie_jar`         | ^4.0.8  | Cookie persistence              |
+| `dio_cookie_manager` | ^3.1.1  | Cookie management for Dio       |
 
-| Package                | Version | Purpose                       |
-| ---------------------- | ------- | ----------------------------- |
-| `flutter_svg`          | ^2.0.9  | SVG rendering                 |
-| `cached_network_image` | ^3.2.3  | Image caching and loading     |
-| `cupertino_icons`      | ^1.0.8  | iOS-style icons               |
-| `flutter_html`         | ^3.0.0  | HTML content rendering        |
-| `flutter_html_video`   | ^3.0.0  | Video support in HTML content |
+</details>
 
-#### Storage & Persistence
+<details>
+<summary><strong>UI & Styling</strong></summary>
+
+| Package                | Version | Purpose                |
+| ---------------------- | ------- | ---------------------- |
+| `flutter_svg`          | ^2.0.9  | SVG rendering          |
+| `cached_network_image` | ^3.2.3  | Image caching          |
+| `cupertino_icons`      | ^1.0.8  | iOS-style icons        |
+| `flutter_html`         | ^3.0.0  | HTML content rendering |
+| `flutter_html_video`   | ^3.0.0  | Video in HTML content  |
+
+</details>
+
+<details>
+<summary><strong>Storage & Persistence</strong></summary>
 
 | Package              | Version | Purpose                 |
 | -------------------- | ------- | ----------------------- |
 | `shared_preferences` | ^2.5.3  | Key-value local storage |
 | `path_provider`      | ^2.1.1  | File system paths       |
 
-#### Firebase & Analytics
+</details>
 
-| Package              | Version | Purpose                     |
-| -------------------- | ------- | --------------------------- |
-| `firebase_core`      | ^3.13.0 | Firebase core functionality |
-| `firebase_analytics` | ^11.6.0 | Analytics tracking          |
+<details>
+<summary><strong>Firebase & Analytics</strong></summary>
 
-#### Notifications
+| Package              | Version | Purpose            |
+| -------------------- | ------- | ------------------ |
+| `firebase_core`      | ^3.13.0 | Firebase core      |
+| `firebase_analytics` | ^11.6.0 | Analytics tracking |
+
+</details>
+
+<details>
+<summary><strong>Notifications</strong></summary>
 
 | Package                       | Version | Purpose                    |
 | ----------------------------- | ------- | -------------------------- |
 | `flutter_local_notifications` | ^17.2.1 | Local push notifications   |
 | `workmanager`                 | ^0.9.0  | Background task scheduling |
 
-#### WebView & Browser
+</details>
 
-| Package                    | Version | Purpose                    |
-| -------------------------- | ------- | -------------------------- |
-| `flutter_inappwebview`     | ^6.0.0  | In-app browser and WebView |
-| `flutter_inappwebview_web` | ^1.0.9  | Web platform support       |
-| `webview_cookie_manager`   | ^2.0.6  | WebView cookie handling    |
-| `url_launcher`             | ^6.3.2  | Open URLs in browser       |
+<details>
+<summary><strong>WebView & Browser</strong></summary>
 
-#### Media & Audio
+| Package                    | Version | Purpose              |
+| -------------------------- | ------- | -------------------- |
+| `flutter_inappwebview`     | ^6.0.0  | In-app browser       |
+| `flutter_inappwebview_web` | ^1.0.9  | Web platform support |
+| `webview_cookie_manager`   | ^2.0.6  | WebView cookies      |
+| `url_launcher`             | ^6.3.2  | Open external URLs   |
 
-| Package                  | Version | Purpose               |
-| ------------------------ | ------- | --------------------- |
-| `flutter_tts`            | ^3.8.5  | Text-to-speech engine |
-| `audioplayers`           | ^6.0.0  | Audio playback        |
-| `youtube_player_flutter` | ^9.1.3  | YouTube video player  |
+</details>
 
-#### Location Services
+<details>
+<summary><strong>Media & Audio</strong></summary>
+
+| Package                  | Version | Purpose        |
+| ------------------------ | ------- | -------------- |
+| `flutter_tts`            | ^3.8.5  | Text-to-speech |
+| `audioplayers`           | ^6.0.0  | Audio playback |
+| `youtube_player_flutter` | ^9.1.3  | YouTube player |
+
+</details>
+
+<details>
+<summary><strong>Location Services</strong></summary>
 
 | Package      | Version | Purpose                        |
 | ------------ | ------- | ------------------------------ |
-| `geolocator` | ^11.1.0 | GPS and location access        |
+| `geolocator` | ^11.1.0 | GPS and location               |
 | `geocoding`  | ^2.1.1  | Address/coordinates conversion |
 
-#### Utilities
+</details>
 
-| Package               | Version | Purpose                                  |
-| --------------------- | ------- | ---------------------------------------- |
-| `intl`                | ^0.20.2 | Internationalization and date formatting |
-| `share_plus`          | ^10.0.1 | Share content to other apps              |
-| `package_info_plus`   | ^8.2.8  | App version and package info             |
-| `connectivity_plus`   | ^6.1.2  | Network connectivity detection           |
-| `android_intent_plus` | ^4.0.3  | Android intent handling                  |
-| `permission_handler`  | ^11.3.1 | Runtime permissions                      |
-| `html_unescape`       | ^2.0.0  | HTML entity decoding                     |
-| `html`                | ^0.15.5 | HTML parsing                             |
-| `flutter_dotenv`      | ^5.1.0  | Environment variables                    |
+<details>
+<summary><strong>Utilities</strong></summary>
 
-### Dev Dependencies
+| Package               | Version | Purpose                  |
+| --------------------- | ------- | ------------------------ |
+| `intl`                | ^0.20.2 | i18n and date formatting |
+| `share_plus`          | ^10.0.1 | Share content            |
+| `package_info_plus`   | ^8.2.8  | App version info         |
+| `connectivity_plus`   | ^6.1.2  | Network detection        |
+| `android_intent_plus` | ^4.0.3  | Android intents          |
+| `permission_handler`  | ^11.3.1 | Runtime permissions      |
+| `html_unescape`       | ^2.0.0  | HTML entity decoding     |
+| `html`                | ^0.15.5 | HTML parsing             |
+| `flutter_dotenv`      | ^5.1.0  | Environment variables    |
+
+</details>
+
+<details>
+<summary><strong>Dev Dependencies</strong></summary>
 
 | Package                   | Version | Purpose              |
 | ------------------------- | ------- | -------------------- |
 | `flutter_test`            | SDK     | Testing framework    |
-| `flutter_lints`           | ^5.0.0  | Code quality linting |
+| `flutter_lints`           | ^5.0.0  | Code quality         |
 | `mockito`                 | ^5.3.2  | Mocking for tests    |
 | `build_runner`            | ^2.3.3  | Code generation      |
 | `flutter_launcher_icons`  | ^0.13.1 | App icon generation  |
 | `change_app_package_name` | ^1.1.0  | Package name utility |
+
+</details>
 
 ---
 
@@ -165,41 +178,43 @@ A modern, feature-rich news reader application built with Flutter. owrite provid
 
 ```
 lib/
-├── main.dart                 # App entry point
-├── models/                   # Data models
-│   ├── article.dart          # Article model
-│   └── video.dart            # Video model
-├── providers/                # State providers
-│   ├── article_provider.dart # Article state management
-│   ├── language_provider.dart# Language settings
-│   ├── theme_provider.dart   # Theme management
-│   └── video_provider.dart   # Video state management
-├── repositories/             # Data repositories
-├── screens/                  # UI screens (29 screens)
-│   ├── home_screen.dart      # Main home screen
-│   ├── article_detail_screen.dart # Article reader
-│   ├── search_screen.dart    # Search functionality
-│   ├── bookmark_screen.dart  # Saved articles
-│   ├── history_screen.dart   # Reading history
-│   ├── settings_screen.dart  # App settings
-│   ├── notifications_screen.dart # Notifications
-│   └── ... (22 more screens)
-├── services/                 # Business logic services (14 services)
-│   ├── api_service.dart      # API communication
-│   ├── gemini_service.dart   # AI integration
-│   ├── bookmark_service.dart # Bookmark management
-│   ├── notification_service.dart # Notifications
-│   └── ... (10 more services)
-├── utils/                    # Utility classes
-│   ├── theme_config.dart     # Theme configuration
-│   ├── auth_service.dart     # Authentication
-│   ├── custom_page_transitions.dart # Page animations
-│   └── ... (5 more utilities)
-└── widgets/                  # Reusable widgets (13 widgets)
-    ├── article_card.dart     # Article card component
-    ├── video_card.dart       # Video card component
-    ├── shimmer_loading.dart  # Loading animations
-    └── ... (10 more widgets)
+├── main.dart                     # App Entry Point
+├── models/                       # Data Models
+│   ├── article.dart              #   Article Model
+│   └── video.dart                #   Video Model
+├── providers/                    # State Management
+│   ├── article_provider.dart     #   Article Provider
+│   ├── language_provider.dart    #   Language Settings
+│   ├── theme_provider.dart       #   Theme Provider
+│   └── video_provider.dart       #   Video Provider
+├── repositories/                 # Data Repositories
+├── screens/                      # UI Screens (30)
+│   ├── home_screen.dart          #   Home Screen
+│   ├── article_detail_screen.dart#   Article Reader
+│   ├── search_screen.dart        #   Search
+│   ├── bookmark_screen.dart      #   Bookmarks
+│   ├── history_screen.dart       #   Reading History
+│   ├── settings_screen.dart      #   Settings
+│   ├── notifications_screen.dart #   Notifications
+│   └── ...                       #   +23 more screens
+├── services/                     # Business Logic (14)
+│   ├── api_service.dart          #   API Connect
+│   ├── youtube_service.dart      #   YouTube Integration
+│   ├── gemini_service.dart       #   AI Summarization
+│   ├── notification_service.dart #   Push Notifications
+│   ├── reading_tracker_service.dart # Reading Tracker
+│   ├── bookmark_service.dart     #   Bookmark Manager
+│   └── ...                       #   +8 more services
+├── utils/                        # Utilities (8)
+│   ├── theme_config.dart         #   Theme Config
+│   ├── auth_service.dart         #   Auth Service
+│   ├── custom_page_transitions.dart # Page Transitions
+│   └── ...                       #   +5 more utils
+└── widgets/                      # Reusable Widgets (13)
+    ├── article_card.dart         #   Article Card
+    ├── video_card.dart           #   Video Card
+    ├── shimmer_loading.dart      #   Loading Skeleton
+    └── ...                       #   +10 more widgets
 ```
 
 ---
@@ -208,217 +223,161 @@ lib/
 
 ### Prerequisites
 
-- Flutter SDK 3.6.0 or higher
-- Dart SDK 3.6.0 or higher
+- Flutter SDK 3.6.0+
+- Dart SDK 3.6.0+
 - Android Studio / VS Code
-- Xcode (for iOS development)
+- Xcode (for iOS)
 
 ### Installation
 
-1. **Clone the repository**
+```bash
+# Clone repository
+git clone https://github.com/yourusername/owrite.git
+cd owrite
 
-   ```bash
-   git clone https://github.com/yourusername/owrite.git
-   cd owrite
-   ```
+# Install dependencies
+flutter pub get
 
-2. **Install dependencies**
+# Create .env in root directory
+cat > .env << EOF
+API_BASE_URL=your_api_url
+GEMINI_API_KEY=your_gemini_api_key
+YOUTUBE_API_KEY=your_youtube_api_key
+EOF
 
-   ```bash
-   flutter pub get
-   ```
-
-3. **Setup environment variables**
-
-   Create a `.env` file in the root directory:
-
-   ```env
-   API_BASE_URL=your_api_url
-   GEMINI_API_KEY=your_gemini_api_key
-   ```
-
-4. **Run the app**
-   ```bash
-   flutter run
-   ```
+# Run
+flutter run
+```
 
 ### Build for Production
 
-**Android:**
-
 ```bash
+# Android
 flutter build apk --release
-# or for app bundle
 flutter build appbundle --release
-```
 
-**iOS:**
-
-```bash
+# iOS
 flutter build ios --release
-```
 
-**Web:**
-
-```bash
+# Web
 flutter build web --release
 ```
 
 ---
 
-## 🍎 iOS Build Tutorial
-
-This section provides a complete guide on how to build and deploy owrite for iOS.
+## 🍎 iOS Build Guide
 
 ### Prerequisites
 
-| Requirement            | Details                                                   |
-| ---------------------- | --------------------------------------------------------- |
-| **macOS**              | Required for building iOS apps (Xcode only runs on macOS) |
-| **Xcode**              | Version 15.0 or higher, install from Mac App Store        |
-| **CocoaPods**          | Dependency manager for iOS native libraries               |
-| **Apple Developer ID** | Free for testing on simulator, paid ($99/year) for device |
-| **Flutter SDK**        | 3.6.0 or higher (same as Android)                         |
+| Requirement            | Details                                 |
+| ---------------------- | --------------------------------------- |
+| **macOS**              | Required (Xcode only runs on macOS)     |
+| **Xcode**              | 15.0+ from Mac App Store                |
+| **CocoaPods**          | iOS dependency manager                  |
+| **Apple Developer ID** | Free for simulator, $99/year for device |
+| **Flutter SDK**        | 3.6.0+                                  |
 
-### Step 1: Install CocoaPods
+### Step 1 — Install CocoaPods
 
 ```bash
-# Install CocoaPods (if not already installed)
 sudo gem install cocoapods
-
-# Or via Homebrew
-brew install cocoapods
+# or: brew install cocoapods
 ```
 
-### Step 2: Firebase iOS Setup
+### Step 2 — Firebase iOS Setup
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Select your existing Firebase project (the one used for Android)
-3. Click **Add App** → Select **iOS**
-4. Enter the **Bundle ID**: `com.medias.owrite-news` (match your Xcode project)
-5. Download the generated `GoogleService-Info.plist`
-6. Place it in `ios/Runner/GoogleService-Info.plist`
+2. Select your Firebase project → **Add App** → **iOS**
+3. Enter Bundle ID: `com.medias.owrite-news`
+4. Download `GoogleService-Info.plist`
+5. Place it in `ios/Runner/GoogleService-Info.plist`
 
-> ⚠️ **Important**: Without `GoogleService-Info.plist`, the app will crash on launch because Firebase is initialized in `AppDelegate.swift`.
+> ⚠️ **Important**: Without `GoogleService-Info.plist`, the app will crash on launch.
 
-### Step 3: Install iOS Dependencies
+### Step 3 — Install iOS Dependencies
 
 ```bash
-# Navigate to the project root
-cd owrite
-
-# Get Flutter dependencies
 flutter pub get
-
-# Install iOS native dependencies
-cd ios
-pod install
-cd ..
+cd ios && pod install && cd ..
 ```
 
-> If `pod install` fails, try:
->
-> ```bash
-> cd ios
-> pod repo update
-> pod install --repo-update
-> cd ..
-> ```
+> If `pod install` fails: `cd ios && pod repo update && pod install --repo-update && cd ..`
 
-### Step 4: Configure Code Signing (Xcode)
+### Step 4 — Code Signing (Xcode)
 
-1. Open `ios/Runner.xcworkspace` in Xcode:
-   ```bash
-   open ios/Runner.xcworkspace
-   ```
-2. Select the **Runner** project in the left sidebar
-3. Go to **Signing & Capabilities** tab
-4. Check **Automatically manage signing**
-5. Select your **Team** (your Apple Developer account)
-6. Xcode will auto-generate provisioning profiles
+1. Open `ios/Runner.xcworkspace` in Xcode
+2. Select **Runner** → **Signing & Capabilities**
+3. Enable **Automatically manage signing**
+4. Select your **Team**
 
-### Step 5: Build & Run
-
-**Run on Simulator:**
+### Step 5 — Build & Run
 
 ```bash
-# List available simulators
-flutter devices
-
-# Run on iOS Simulator
+# Simulator
 flutter run -d "iPhone 16 Pro"
-```
 
-**Build for Device (Debug):**
+# Device (debug)
+flutter run -d <device-id>
 
-```bash
-flutter run -d <your-device-id>
-```
-
-**Build Release IPA:**
-
-```bash
-# Build release archive
-flutter build ios --release
-
-# Or build IPA directly
+# Release IPA
 flutter build ipa --release
 ```
 
-### Step 6: App Store Submission (Optional)
+### Step 6 — App Store Submission (Optional)
 
-1. **Build Archive** in Xcode:
-   - Product → Archive
-2. **Upload to App Store Connect:**
-   - Window → Organizer → Distribute App
-   - Select **App Store Connect** → Upload
-3. **Submit for Review** in [App Store Connect](https://appstoreconnect.apple.com/)
+1. Xcode → **Product** → **Archive**
+2. **Window** → **Organizer** → **Distribute App**
+3. Submit via [App Store Connect](https://appstoreconnect.apple.com/)
 
-### iOS-Specific Notes
+### iOS Notes
 
-- **Notifications**: iOS uses `UNUserNotificationCenter` instead of Android channels. Permission is requested at runtime.
-- **Background Fetch**: Configured via `UIBackgroundModes` in `Info.plist` (`fetch` + `remote-notification`).
-- **Location**: iOS requires usage description strings in `Info.plist`. These are already configured.
-- **Browser Chooser**: The Android intent-based browser chooser is not available on iOS. The app falls back to `url_launcher` (system default browser or in-app browser).
-- **TTS**: Flutter TTS works natively on iOS via AVSpeechSynthesizer.
+| Topic            | Details                                                          |
+| ---------------- | ---------------------------------------------------------------- |
+| Notifications    | Uses `UNUserNotificationCenter`, permission requested at runtime |
+| Background Fetch | Configured via `UIBackgroundModes` in `Info.plist`               |
+| Location         | Usage description strings already configured in `Info.plist`     |
+| Browser          | Falls back to `url_launcher` (no Android intent-based chooser)   |
+| TTS              | Uses native `AVSpeechSynthesizer`                                |
 
 ### Troubleshooting
 
-| Issue                                | Solution                                                                           |
-| ------------------------------------ | ---------------------------------------------------------------------------------- |
-| `pod install` fails                  | Run `pod repo update` then retry                                                   |
-| Signing error                        | Ensure Apple Developer account is added in Xcode → Preferences → Accounts          |
-| `GoogleService-Info.plist` not found | Download from Firebase Console and place in `ios/Runner/`                          |
-| Build fails on M1/M2 Mac             | Run `arch -x86_64 pod install` or install ffi: `sudo arch -x86_64 gem install ffi` |
-| Minimum deployment target error      | Open Xcode, set deployment target to iOS 13.0 or higher                            |
+| Issue                              | Solution                                                      |
+| ---------------------------------- | ------------------------------------------------------------- |
+| `pod install` fails                | Run `pod repo update` then retry                              |
+| Signing error                      | Add Apple Developer account in Xcode → Preferences → Accounts |
+| Missing `GoogleService-Info.plist` | Download from Firebase Console → `ios/Runner/`                |
+| Build fails on Apple Silicon       | `arch -x86_64 pod install` or install ffi gem                 |
+| Deployment target error            | Set iOS 13.0+ in Xcode project settings                       |
 
 ---
 
 ## 🎨 Theming
 
-The app supports both light and dark themes with smooth transitions. Custom fonts are included:
+Light and dark themes with smooth transitions. Included fonts:
 
-- **DMSans** - Primary UI font
-- **CrimsonPro** - Serif reading font
-- **Inter** - Secondary UI font
-- **Arimo** - Alternative sans-serif
-- **Domine** - Serif heading font
-- **SourceSerif4** - Article body font
-- **Bricolage Grotesque** - Display font
-- **Anton** - Bold display font
+| Font                    | Usage                  |
+| ----------------------- | ---------------------- |
+| **DMSans**              | Primary UI             |
+| **Inter**               | Secondary UI           |
+| **CrimsonPro**          | Serif reading          |
+| **Arimo**               | Alternative sans-serif |
+| **Domine**              | Serif headings         |
+| **SourceSerif4**        | Article body           |
+| **Bricolage Grotesque** | Display                |
+| **Anton**               | Bold display           |
 
 ---
 
-## 📱 Supported Platforms
+## 📱 Platform Support
 
-| Platform | Status    |
-| -------- | --------- |
-| Android  | Supported |
-| iOS      | Supported |
-| Web      | Supported |
-| Windows  | Supported |
-| macOS    | Planned   |
-| Linux    | Supported |
+| Platform | Status       |
+| -------- | ------------ |
+| Android  | ✅ Supported |
+| iOS      | ✅ Supported |
+| Web      | ✅ Supported |
+| Windows  | ✅ Supported |
+| Linux    | ✅ Supported |
+| macOS    | 🔜 Planned   |
 
 ---
 
@@ -430,8 +389,8 @@ This project is proprietary software. All rights reserved.
 
 ## 📞 Contact
 
-For support or inquiries, please use the in-app feedback feature or contact the development team.
+For support or inquiries, use the in-app feedback feature or contact the development team.
 
 ---
 
-**Version:** 1.0.4+2
+<p align="center"><strong>owrite</strong> · v1.0.5+3</p>

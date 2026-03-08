@@ -29,6 +29,9 @@ class NotificationScheduler {
     'DAERAH',
     'NASIONAL',
     'INTERNASIONAL',
+    'HUKUM',
+    'WARGA SPILL',
+    'CARI TAHU',
   ];
 
   // Initialize scheduler
@@ -240,6 +243,8 @@ class NotificationScheduler {
         return 'Nasional';
       case 'INTERNASIONAL':
         return 'Internasional';
+      case 'HUKUM':
+        return 'Hukum';
       default:
         return category;
     }

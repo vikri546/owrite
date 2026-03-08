@@ -31,8 +31,14 @@ class ArticleRepository {
     // Gunakan nama kategori (atau 'all' jika null) sebagai bagian dari kunci cache
     final String cacheCategoryIdentifier = categoryName ?? 'all';
 
+    // Untuk kategori khusus seperti "WARGA SPILL" yang sekarang diambil dari tag "Spill",
+    // lebih aman jika selalu hit API langsung (tanpa cache) supaya tidak terjebak cache lama.
+    final bool disableCacheForCategory = categoryName != null &&
+        categoryName.toUpperCase() == 'WARGA SPILL';
+
     // 1. Coba ambil dari cache jika halaman pertama dan tidak dipaksa refresh
-    if (page == 1 && !forceRefresh) {
+    //    (kecuali untuk kategori yang caching-nya dimatikan)
+    if (page == 1 && !forceRefresh && !disableCacheForCategory) {
       try {
         final cachedArticles = await _getCachedArticles(cacheCategoryIdentifier);
         if (cachedArticles != null) { // Jika cache valid dan tidak kedaluwarsa

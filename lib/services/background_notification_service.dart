@@ -29,6 +29,9 @@ class BackgroundNotificationService {
     'DAERAH',
     'NASIONAL',
     'INTERNASIONAL',
+    'HUKUM',
+    'WARGA SPILL',
+    'CARI TAHU',
   ];
 
   // Initialize background service
@@ -230,6 +233,8 @@ class BackgroundNotificationService {
         return 'Nasional';
       case 'INTERNASIONAL':
         return 'Internasional';
+      case 'HUKUM':
+        return 'Hukum';
       default:
         return category;
     }

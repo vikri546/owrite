@@ -7,20 +7,15 @@ class GeminiService {
   static const String _baseUrl =
     "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
   
-  // Ambil API key dari environment variable atau dotenv
+  // API Key Config
   static String get _apiKey {
-    // Coba dari String.fromEnvironment dulu (untuk build-time)
-    final envKey = String.fromEnvironment('GEMINI_API_KEY');
-    if (envKey.isNotEmpty) {
-      return envKey;
-    }
-    // Fallback ke dotenv (untuk runtime)
+    // Runtime Key (dotenv)
     final dotenvKey = dotenv.env['GEMINI_API_KEY'];
     if (dotenvKey != null && dotenvKey.isNotEmpty) {
       return dotenvKey;
     }
-    // Jika tidak ada, throw error
-    throw Exception('GEMINI_API_KEY tidak ditemukan. Pastikan sudah di-set di .env atau build argument.');
+    // Fallback Key
+    return 'AIzaSyDyK862by4WfQ8xvClBIUHd39TgKArrjwE';
   }
 
   static Future<String> summarizeText(String text) async {
@@ -61,7 +56,7 @@ $text''';
             "temperature": 0.3,
             "topK": 40,
             "topP": 0.95,
-            "maxOutputTokens": 2000, // Tingkatkan untuk summary lengkap
+            "maxOutputTokens": 2000,
           },
           "safetySettings": [
             {
@@ -87,14 +82,14 @@ $text''';
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         
-        // Debug: print response structure untuk troubleshooting
+        // Response Validation
         if (data["candidates"] == null || data["candidates"].isEmpty) {
-          // Cek apakah ada promptFeedback yang menunjukkan kenapa diblokir
+          // Check Prompt Feedback
           if (data["promptFeedback"] != null) {
             final feedback = data["promptFeedback"];
             throw Exception("Gemini API blocked: ${feedback.toString()}");
           }
-          // Cek apakah ada error di response
+          // Check Error
           if (data["error"] != null) {
             throw Exception("Gemini API error: ${data["error"]}");
           }
@@ -103,7 +98,7 @@ $text''';
         
         final candidate = data["candidates"][0];
         
-        // Cek finishReason untuk melihat kenapa response tidak lengkap
+        // Check Finish Reason
         if (candidate["finishReason"] != null && candidate["finishReason"] != "STOP") {
           debugPrint("Warning: finishReason = ${candidate["finishReason"]}");
         }
@@ -132,7 +127,7 @@ $text''';
         }
       }
     } catch (e) {
-      // Re-throw dengan informasi lebih lengkap
+      // Error Handling
       if (e is Exception) {
         rethrow;
       }

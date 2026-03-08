@@ -89,6 +89,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       'INTERNASIONAL',
       'POLITIK',
       'KESEHATAN',
+      'HUKUM',
+      'WARGA SPILL',
+      'CARI TAHU',
     ];
     _allCategories.sort();
   }

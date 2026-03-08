@@ -22,8 +22,7 @@ import 'screens/link_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/users_screen.dart';
 import 'screens/quick_screen.dart';
-// Ini sudah mengimpor TrashManager
-import 'screens/notifications_screen.dart'; // Impor file yang sudah dimodifikasi
+import 'screens/notifications_screen.dart';
 import 'screens/display_settings_screen.dart';
 import 'screens/web_login_screen.dart';
 import 'screens/watch_screen.dart';
@@ -56,18 +55,17 @@ import 'services/notification_manager.dart';
 import 'widgets/theme_transition_builder.dart';
 import 'widgets/theme_toggle_button.dart';
 
-// Other
 import 'dart:async';
 
-// Warna background bottom bar untuk terang dan gelap
+// Bottom Nav Colors
 const Color kBottomNavLightColor = Color(0xFFF5F5F5);
 const Color kBottomNavDarkColor = Color(0xFF1A1A1A);
 
-// Global navigator key untuk navigasi dari notifikasi
+// Global Navigator Key
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 
-/// Handle notification tap dan navigasi
+/// Notification Tap Handler
 void _handleNotificationTap(String? payload) {
   if (payload == null || payload.isEmpty) return;
   
@@ -101,7 +99,7 @@ void _handleNotificationTap(String? payload) {
   }
 }
 
-/// Navigate to article detail
+/// Article Navigation
 Future<void> _navigateToArticle(String? articleId, String? articleUrl) async {
   try {
     if (articleId == null && articleUrl == null) return;
@@ -155,7 +153,7 @@ Future<void> _navigateToArticle(String? articleId, String? articleUrl) async {
   }
 }
 
-/// Navigate to video player
+/// Video Navigation
 void _navigateToVideo(String videoId, bool isShorts) {
   if (navigatorKey.currentState == null) return;
   
@@ -185,14 +183,11 @@ void _navigateToVideo(String videoId, bool isShorts) {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Jalankan hanya di perangkat mobile (Android/iOS), jika web tampilkan warning.
+  // Platform Check
   if (kIsWeb) {
-    // --- PERBAIKAN ---
-    // Jika web, jalankan WebWarningApp
     runApp(const WebWarningApp());
   } else {
-    // --- PERBAIKAN ---
-    // Jika bukan web (mobile), lakukan inisialisasi penuh dan jalankan MyApp
+    // App Initialization
     try {
       await Firebase.initializeApp();
       debugPrint("✅ Firebase initialized successfully");
@@ -234,7 +229,7 @@ void main() async {
   }
 }
 
-// ========== WEB WARNING APP ==========
+// Web Warning App
 class WebWarningApp extends StatelessWidget {
   const WebWarningApp({Key? key}) : super(key: key);
 
@@ -300,10 +295,8 @@ class WebWarningScreen extends StatelessWidget {
     );
   }
 }
-// =====================================
 
-// ==== SPLASH ANIMATION AND WRAPPER ====
-// NOTE: Pastikan file @icon-app.png ada di assets/images, dan sudah di pubspec.yaml assets
+// Splash Animation
 
 class MyAppWithSplash extends StatefulWidget {
   const MyAppWithSplash({Key? key}) : super(key: key);
@@ -318,7 +311,7 @@ class _MyAppWithSplashState extends State<MyAppWithSplash> {
   @override
   void initState() {
     super.initState();
-    // Jalankan timer sesuai lama animasi splash
+    // Splash Duration Timer
     Future.delayed(const Duration(milliseconds: 2700), () {
       if (mounted) {
         setState(() {
@@ -358,12 +351,7 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
     );
 
-    // Konfigurasi:
-    // - Fade in cepat (0-14%)
-    // - Tahan penuh (14-70%)
-    // - Fade out full lebih lama (70-100%)
-    // - Zoom in lebih lama (14-99%) baru dorong lebih cepat sampai 100%
-    // - Tidak ada zoom out; logo zoom hingga menutupi layar.
+    // Fade & Scale Animation Config
 
     _fadeAnimation = TweenSequence([
       TweenSequenceItem(
@@ -380,13 +368,7 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     ]).animate(_controller);
 
-    // Scale:
-    // - 0-14%: 1.0 tetap (hold)
-    // - 14%-99%: 1.0 -> maxScale (zoom ke lebar layar/layar penuh)
-    // - 99%-100%: akselerasi sedikit ke maxScale*1.12
-    // NOTE: maxScale diukur dinamis di build() untuk supaya logo zoom menutupi layar.
-
-    // Tetap perlu inisialisasi awal agar tidak null.
+    // Scale Animation Init
     _scaleAnimation = AlwaysStoppedAnimation(1.0);
 
     _controller.forward().whenComplete(() {
@@ -410,10 +392,8 @@ class _SplashScreenState extends State<SplashScreen>
     final size = MediaQuery.of(context).size;
     final maxDim = max(size.width, size.height);
 
-    // Agar menutupi semua sisi: ukuran logo dibesarkan min lebar/lantai layar * X
-    // Rasio = ukuran layar / logoSize, diberi buffer supaya benar2 menutupi
-    // Ubah: KURANGI sedikit scale (awalnya *1.28 dan *1.16 di bawah, jadi lebih kecil)
-    final double targetScaleFullScreen = (maxDim / logoSize) * 0.4; // sebelumnya 1.28
+    // Dynamic Scale Target
+    final double targetScaleFullScreen = (maxDim / logoSize) * 0.4;
 
     final Animation<double> scaleAnim = TweenSequence([
       TweenSequenceItem(
@@ -433,7 +413,7 @@ class _SplashScreenState extends State<SplashScreen>
     ]).animate(_controller);
 
     return Material(
-      color: const Color(0xFFE5FF10), // Ubah background luar menjadi warna #e5ff10
+      color: const Color(0xFFE5FF10),
       child: Center(
         child: AnimatedBuilder(
           animation: _controller,
@@ -458,7 +438,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
-// =====================================
+
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -473,7 +453,7 @@ class MyApp extends StatelessWidget {
       builder: (context, themeProvider, languageProvider, _) {
         final strings = AppStrings(languageProvider.locale.languageCode);
 
-        // Tema Terang
+        // Light Theme
         final lightThemeData = AppTheme.lightTheme.copyWith(
           scaffoldBackgroundColor: ThemeProvider.lightColor,
           canvasColor: ThemeProvider.lightColor,
@@ -483,7 +463,7 @@ class MyApp extends StatelessWidget {
           brightness: Brightness.light,
         );
 
-        // Tema Gelap
+        // Dark Theme
         final darkThemeData = AppTheme.darkTheme.copyWith(
           scaffoldBackgroundColor: ThemeProvider.darkColor,
           canvasColor: ThemeProvider.darkColor,
@@ -524,7 +504,6 @@ class MyApp extends StatelessWidget {
                 GlobalWidgetsLocalizations.delegate,
                 GlobalCupertinoLocalizations.delegate,
               ],
-              // GANTI: Tampilkan MainScreen saja di awal (bukan AuthWrapper/Stack WebLogin)
               home: const MainScreen(),
             );
           },
@@ -535,11 +514,11 @@ class MyApp extends StatelessWidget {
 }
 
 class MainScreen extends StatefulWidget {
-  final int initialTab; // >>> TAMBAHKAN PARAMETER INI >>>
+  final int initialTab;
   
   const MainScreen({
     Key? key,
-    this.initialTab = 0, // >>> DEFAULT ke tab 0 (OWRITE) >>>
+    this.initialTab = 0,
   }) : super(key: key);
   
   @override
@@ -562,7 +541,6 @@ class _MainScreenState extends State<MainScreen>
   void initState() {
     super.initState();
 
-    // >>> INISIALISASI INDEX DARI PARAMETER >>>
     _selectedIndex = widget.initialTab;
 
     _tabController = TabController(length: 4, vsync: this);
@@ -572,7 +550,7 @@ class _MainScreenState extends State<MainScreen>
       }
     });
 
-    // >>> ANIMASI KE TAB YANG DIPILIH >>>
+    // Tab Navigation
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.initialTab != 0) {
         _tabController.animateTo(widget.initialTab);
@@ -714,7 +692,7 @@ class _MainScreenState extends State<MainScreen>
         .languageCode;
     final strings = AppStrings(lang);
 
-    // Hanya jalankan permission di HP, bukan di web.
+    // Mobile Only
     if (kIsWeb) {
       return;
     }
@@ -760,7 +738,7 @@ class _MainScreenState extends State<MainScreen>
         .languageCode;
     final strings = AppStrings(lang);
 
-    // Hanya jalankan permission di HP, bukan di web.
+    // Mobile Only
     if (kIsWeb) {
       return;
     }

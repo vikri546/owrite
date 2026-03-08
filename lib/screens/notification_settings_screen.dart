@@ -27,6 +27,7 @@ class _NotificationSettingsScreenState
   bool _daerah = false;      // Kategori DAERAH
   bool _nasional = false;    // Kategori NASIONAL
   bool _internasional = false; // Kategori INTERNASIONAL
+  bool _hukum = false;         // Kategori HUKUM
 
   // Cek apakah notifikasi diizinkan pengguna di aplikasi (custom logic)
   bool _notificationsEnabled = false;
@@ -58,6 +59,7 @@ class _NotificationSettingsScreenState
       _daerah = prefs.getBool('notif_category_DAERAH') ?? false;
       _nasional = prefs.getBool('notif_category_NASIONAL') ?? false;
       _internasional = prefs.getBool('notif_category_INTERNASIONAL') ?? false;
+      _hukum = prefs.getBool('notif_category_HUKUM') ?? false;
     });
   }
 
@@ -156,6 +158,7 @@ class _NotificationSettingsScreenState
       _daerah = false;
       _nasional = false;
       _internasional = false;
+      _hukum = false;
     });
     await prefs.setBool('notif_breaking_news', true);
     await prefs.setBool('notif_top_business', true);
@@ -167,6 +170,7 @@ class _NotificationSettingsScreenState
     await prefs.setBool('notif_category_DAERAH', false);
     await prefs.setBool('notif_category_NASIONAL', false);
     await prefs.setBool('notif_category_INTERNASIONAL', false);
+    await prefs.setBool('notif_category_HUKUM', false);
     // Optionally stop scheduler/notifications, if your service supports it
     await _scheduler.updateCategoryPreferences();
   }
@@ -182,6 +186,7 @@ class _NotificationSettingsScreenState
       _daerah = false;
       _nasional = false;
       _internasional = false;
+      _hukum = false;
     });
     await prefs.setBool('notif_category_HYPE', false);
     await prefs.setBool('notif_category_OLAHRAGA', false);
@@ -190,6 +195,7 @@ class _NotificationSettingsScreenState
     await prefs.setBool('notif_category_DAERAH', false);
     await prefs.setBool('notif_category_NASIONAL', false);
     await prefs.setBool('notif_category_INTERNASIONAL', false);
+    await prefs.setBool('notif_category_HUKUM', false);
     await _scheduler.updateCategoryPreferences();
   }
 
@@ -492,6 +498,20 @@ class _NotificationSettingsScreenState
                 ? (value) {
                     setState(() => _internasional = value);
                     _saveCategoryPreference('INTERNASIONAL', value);
+                  }
+                : null,
+            isDark: isDark,
+            enabled: sectionKategoriEnabled,
+          ),
+          _buildDottedDivider(isDark),
+
+          _buildToggleItem(
+            title: 'Hukum',
+            value: _hukum,
+            onChanged: (sectionKategoriEnabled)
+                ? (value) {
+                    setState(() => _hukum = value);
+                    _saveCategoryPreference('HUKUM', value);
                   }
                 : null,
             isDark: isDark,
