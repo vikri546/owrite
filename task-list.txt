@@ -1,0 +1,86 @@
+========================================
+  OWRITE - TASK LIST BUILD ANDROID & iOS
+========================================
+
+--- SETUP AWAL ---
+1. Install Flutter SDK & Dart SDK
+2. Install Android Studio + Android SDK
+3. Install Xcode (untuk iOS, khusus macOS)
+4. Jalankan "flutter doctor" pastikan semua checklist hijau
+5. Clone/buka project "owrite"
+6. Jalankan "flutter pub get" untuk install dependencies
+7. Buat file .env dan isi konfigurasi (API key, base URL, dll)
+8. Siapkan assets (icon, gambar, font, sounds)
+
+--- KONFIGURASI FIREBASE ---
+9. Buat project di Firebase Console
+10. Tambahkan app Android di Firebase (download google-services.json)
+11. Tambahkan app iOS di Firebase (download GoogleService-Info.plist)
+12. Pasang Firebase SDK di pubspec.yaml (firebase_core, firebase_analytics)
+13. Jalankan "flutterfire configure" jika perlu
+
+--- SETUP ANDROID ---
+14. Set applicationId di android/app/build.gradle
+15. Set minSdkVersion, targetSdkVersion, compileSdkVersion
+16. Taruh google-services.json di android/app/
+17. Konfigurasi permissions di AndroidManifest.xml (internet, lokasi, notifikasi)
+18. Set signing config (debug.keystore / release keystore)
+19. Test build: "flutter build apk --debug"
+
+--- SETUP iOS ---
+20. Buka ios/Runner.xcworkspace di Xcode
+21. Set Bundle Identifier di Xcode
+22. Set Deployment Target (minimum iOS version)
+23. Taruh GoogleService-Info.plist di ios/Runner/
+24. Konfigurasi permissions di Info.plist (lokasi, notifikasi, dll)
+25. Set Signing & Capabilities (Team, Provisioning Profile)
+26. Jalankan "pod install" di folder ios/
+27. Test build: "flutter build ios --debug"
+
+--- DEVELOPMENT FITUR ---
+28. Buat struktur folder (models, services, screens, widgets, providers, utils)
+29. Setup routing/navigasi antar halaman
+30. Buat model data (Article, Category, dll)
+31. Buat service untuk API call (http/dio)
+32. Buat provider state management
+33. Buat halaman utama (Home, Kategori, Detail Artikel)
+34. Implementasi cached image loading
+35. Implementasi fitur pencarian berita
+36. Implementasi fitur share artikel
+37. Implementasi text-to-speech
+38. Implementasi push notification (flutter_local_notifications)
+39. Implementasi peta/lokasi (flutter_map, geolocator)
+40. Implementasi webview untuk konten HTML
+41. Implementasi Gemini AI service
+42. Buat widget reusable (card berita, loading indicator, dll)
+
+--- TESTING ---
+43. Jalankan "flutter analyze" untuk cek lint errors
+44. Test di Android Emulator
+45. Test di iOS Simulator
+46. Test di device fisik Android
+47. Test di device fisik iPhone
+48. Pastikan responsive di berbagai ukuran layar
+49. Test koneksi API dan loading state
+50. Test semua fitur (share, TTS, notifikasi, lokasi)
+
+--- BUILD RELEASE ---
+51. Ganti version & build number di pubspec.yaml
+52. Generate app icon: "flutter pub run flutter_launcher_icons"
+53. Build release Android: "flutter build apk --release"
+54. Build release Android Bundle: "flutter build appbundle --release"
+55. Build release iOS: "flutter build ios --release"
+56. Archive iOS di Xcode untuk upload ke App Store
+
+--- DEPLOY / PUBLISH ---
+57. Upload AAB ke Google Play Console
+58. Isi listing Play Store (deskripsi, screenshot, kategori)
+59. Submit review Google Play
+60. Upload build iOS via App Store Connect (Transporter/Xcode)
+61. Isi listing App Store (deskripsi, screenshot, kategori)
+62. Submit review App Store
+
+--- SELESAI ---
+63. Monitor crash report di Firebase Crashlytics
+64. Monitor analytics di Firebase Analytics
+65. Update & maintenance berkala

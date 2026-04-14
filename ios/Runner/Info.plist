@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>AVAudioSession</key>
+	<string>playback</string>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -22,8 +26,27 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>owrite membutuhkan akses kamera untuk fitur tertentu.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>owrite membutuhkan akses lokasi untuk menyesuaikan berita dengan wilayah Anda.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>owrite membutuhkan akses lokasi untuk menyesuaikan berita dengan wilayah Anda.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>owrite membutuhkan akses mikrofon untuk fitur pencarian suara.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>owrite membutuhkan akses pengenalan suara untuk fitur text-to-speech.</string>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -41,35 +64,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	<!-- Location Permissions -->
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>owrite membutuhkan akses lokasi untuk menyesuaikan berita dengan wilayah Anda.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>owrite membutuhkan akses lokasi untuk menyesuaikan berita dengan wilayah Anda.</string>
-	<!-- Microphone Permission -->
-	<key>NSMicrophoneUsageDescription</key>
-	<string>owrite membutuhkan akses mikrofon untuk fitur pencarian suara.</string>
-	<!-- Speech Recognition Permission -->
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>owrite membutuhkan akses pengenalan suara untuk fitur text-to-speech.</string>
-	<!-- Camera Permission -->
-	<key>NSCameraUsageDescription</key>
-	<string>owrite membutuhkan akses kamera untuk fitur tertentu.</string>
-	<!-- Background Modes -->
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>fetch</string>
-		<string>remote-notification</string>
-	</array>
-	<!-- App Store Compliance -->
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
-	<!-- Flutter TTS -->
-	<key>AVAudioSession</key>
-	<string>playback</string>
 </dict>
 </plist>

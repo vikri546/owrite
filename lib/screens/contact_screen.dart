@@ -15,10 +15,11 @@ class ContactScreen extends StatelessWidget {
   static const String _phone = '+62 812 3456 7890';
   static const String _whatsapp = '+62 812 3456 7890';
   static const String _website = 'https://owrite.id';
-  static const String _address = 'Jl. Sultan Iskandar Muda No. 5, RT.9/RW.1, Kebayoran Lama Utara, Jakarta Selatan, 12230';
-  
+  static const String _address =
+      'Jl. Sultan Iskandar Muda No. 5, RT.9/RW.1, Kebayoran Lama Utara, Jakarta Selatan, 12230';
+
   // Koordinat lokasi - Jl. Sultan Iskandar Muda, Kebayoran Lama
-  static const double _latitude = -6.238060361170324; 
+  static const double _latitude = -6.238060361170324;
   static const double _longitude = 106.78359364643468;
 
   Future<void> _launchUrl(String url) async {
@@ -43,13 +44,15 @@ class ContactScreen extends StatelessWidget {
   }
 
   Future<void> _launchWhatsApp() async {
-    final whatsappUrl = 'https://wa.me/${_whatsapp.replaceAll(RegExp(r'[^0-9]'), '')}';
+    final whatsappUrl =
+        'https://wa.me/${_whatsapp.replaceAll(RegExp(r'[^0-9]'), '')}';
     await _launchUrl(whatsappUrl);
   }
 
   Future<void> _openMaps() async {
     // Buka Google Maps dengan koordinat
-    final googleMapsUrl = 'https://www.google.com/maps/search/?api=1&query=$_latitude,$_longitude';
+    final googleMapsUrl =
+        'https://www.google.com/maps/search/?api=1&query=$_latitude,$_longitude';
     await _launchUrl(googleMapsUrl);
   }
 
@@ -98,7 +101,7 @@ class ContactScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              
+
               // Description paragraphs
               Text(
                 'Di dunia yang penuh kebisingan, kejernihan adalah kemewahan. Dan kami hadir untuk memberikannya.',
@@ -165,9 +168,9 @@ class ContactScreen extends StatelessWidget {
                   height: 1.6,
                 ),
               ),
-              
+
               const SizedBox(height: 28),
-              
+
               // Section title - Primary Contact
               Text(
                 'Kontak Utama',
@@ -179,13 +182,13 @@ class ContactScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              
+
               // Email Card - Premium Design
               Builder(
                 builder: (context) {
                   // Use black in light mode, accent color in dark mode
                   final emailAccentColor = isDark ? _accentColor : Colors.black;
-                  
+
                   return Material(
                     color: Colors.transparent,
                     child: InkWell(
@@ -277,9 +280,9 @@ class ContactScreen extends StatelessWidget {
                   );
                 },
               ),
-              
+
               const SizedBox(height: 28),
-              
+
               // Section title - Address with Map
               Text(
                 'Alamat',
@@ -291,7 +294,7 @@ class ContactScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              
+
               // Interactive Map Panel with Address
               Container(
                 width: double.infinity,
@@ -319,14 +322,16 @@ class ContactScreen extends StatelessWidget {
                                 initialCenter: LatLng(_latitude, _longitude),
                                 initialZoom: 15.0,
                                 interactionOptions: const InteractionOptions(
-                                  flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                                  flags: InteractiveFlag.all &
+                                      ~InteractiveFlag.rotate,
                                 ),
                               ),
                               children: [
                                 // OpenStreetMap Tiles (free, no API key)
                                 TileLayer(
-                                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                  userAgentPackageName: 'com.example.owrite',
+                                  urlTemplate:
+                                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                  userAgentPackageName: 'com.medias.owrite',
                                 ),
                                 // Location Marker
                                 MarkerLayer(
@@ -336,39 +341,41 @@ class ContactScreen extends StatelessWidget {
                                       width: 180,
                                       height: 60,
                                       child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           const SizedBox(width: 20),
                                           // Label "OWRITE MEDIA"
                                           Stack(
                                             children: [
-                                                // Outline putih
-                                                Text(
+                                              // Outline putih
+                                              Text(
                                                 'OWRITE MEDIA',
                                                 style: TextStyle(
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontFamily: 'Inter',
-                                                    letterSpacing: 0.5,
-                                                    foreground: Paint()
-                                                    ..style = PaintingStyle.stroke
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontFamily: 'Inter',
+                                                  letterSpacing: 0.5,
+                                                  foreground: Paint()
+                                                    ..style =
+                                                        PaintingStyle.stroke
                                                     ..strokeWidth = 2
                                                     ..color = Colors.white,
                                                 ),
-                                                ),
-                                                // Isi teks hitam
-                                                Text(
+                                              ),
+                                              // Isi teks hitam
+                                              Text(
                                                 'OWRITE MEDIA',
                                                 style: const TextStyle(
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontFamily: 'Inter',
-                                                    letterSpacing: 0.5,
-                                                    color: Colors.black,
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontFamily: 'Inter',
+                                                  letterSpacing: 0.5,
+                                                  color: Colors.black,
                                                 ),
-                                                ),
+                                              ),
                                             ],
-                                            )
+                                          )
                                         ],
                                       ),
                                     ),
@@ -460,9 +467,9 @@ class ContactScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 40),
-              
+
               // Copyright
               Center(
                 child: Padding(
