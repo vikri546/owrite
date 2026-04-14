@@ -288,7 +288,7 @@ sudo gem install cocoapods
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
 2. Select your Firebase project → **Add App** → **iOS**
-3. Enter Bundle ID: `com.medias.owrite-news`
+3. Enter Bundle ID: `com.medias.owrite`
 4. Download `GoogleService-Info.plist`
 5. Place it in `ios/Runner/GoogleService-Info.plist`
 

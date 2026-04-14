@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "810005265943",
+    "project_id": "owrite-apps",
+    "storage_bucket": "owrite-apps.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:810005265943:android:204b341bd4ae976636a652",
+        "android_client_info": {
+          "package_name": "com.medias.owrite"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDki_oVJ9893q6c67iUZyNLpQ9pLHJjbdk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
